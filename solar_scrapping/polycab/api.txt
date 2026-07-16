@@ -1,0 +1,29 @@
+post request
+https://pv.polycabmonitoring.com/dist/server/api/CodeIgniter/index.php/Senergytec/web/v2/Inverterapi/UserLogin_v1
+
+{MemberID
+: 
+"oaksun"
+Password
+: 
+"Solar@123"
+remember
+: 
+true
+sign
+: 
+"27nDC0xmr8DnU+FqW/LueKXYgTTDWrRTCNVttFdsDe7NE4oKLuMEPp5A0CdgVBZh1ougygPzeCTeiOjt9TsPFI4F1xSfqJ+dYOAcJshSmBk="
+type
+: 
+"1"
+}
+
+{
+    "status": "ok",
+    "type": "1",
+    "currentAuthority": "user",
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJwdi5wb2x5Y2FibW9uaXRvcmluZy5jb20iLCJhdWQiOiJwdi5wb2x5Y2FibW9uaXRvcmluZy5jb20iLCJpYXQiOjE3ODI0NTkzNTcsIm5iZiI6MTc4MjQ1OTM1NywiZXhwIjoxODEzNTYzMzU3LCJkYXRhIjp7Ik1lbWJlckF1dG9JRCI6bnVsbH19.AA-Be5BYGjq0oBgd3etbvpc8eXWRTIvtpuNpMLCnioA",
+    "MemberAutoID": "786224"
+}
+
+username/login /email : oaksun and the passowrd is Solar@123
