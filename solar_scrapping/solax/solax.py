@@ -1,5 +1,6 @@
 import os
 import time
+import json
 import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -10,10 +11,102 @@ from selenium.webdriver.support import expected_conditions as EC
 LOGIN_URL = "https://www.solaxcloud.com/user-center/"
 USERNAME = "oaksun"
 PASSWORD = "Oaksun@1006@"
-EXCEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "solar_data.xlsx")
+EXCEL_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "solar_data.xlsx"))
 
 # Set to True if running in background without a screen
 HEADLESS = True
+
+PLANT_MAPPING = {
+    "my space study hall 1": 1,
+    "my space study hall": 2,
+    "vasudev blue flied site": 3,
+    "villa num 111": 4,
+    "rv2": 5,
+    "rv1": 6,
+    "melgiri enterprises house 3": 7,
+    "melgiri enterprises": 8,
+    "melgiri enterprises house 2": 9,
+    "melgiri farm 02": 10,
+    "melgiri farms 01": 11,
+    "magna villa 15": 12,
+    "abhilash reddy incrible hallmark villa no.24": 13,
+    "arya vysya anna satram": 14,
+    "central university of haryana": 15,
+    "magna villa 41": 16
+}
+
+def get_plant_id(plant_name):
+    key = str(plant_name).strip().lower()
+    if key in PLANT_MAPPING:
+        return PLANT_MAPPING[key]
+    new_id = max(PLANT_MAPPING.values()) + 1 if PLANT_MAPPING else 1
+    PLANT_MAPPING[key] = new_id
+    print(f"Warning: Dynamic plant mapping created for '{plant_name}' -> ID {new_id}")
+    return new_id
+
+def clean_timestamp(date_str):
+    if pd.isna(date_str) or not date_str:
+        return None
+    s = str(date_str).strip()
+    s = s.split('(')[0].strip()
+    
+    parts = s.split(' ')
+    if len(parts) >= 2:
+        date_part = parts[0]
+        time_part = parts[1]
+        for sep in ['/', '-']:
+            if sep in date_part:
+                date_pieces = date_part.split(sep)
+                if len(date_pieces) == 3:
+                    if len(date_pieces[0]) == 4:
+                        return f"{date_pieces[0]}-{date_pieces[1].zfill(2)}-{date_pieces[2].zfill(2)} {time_part}"
+                    else:
+                        day = date_pieces[0].zfill(2)
+                        month = date_pieces[1].zfill(2)
+                        year = date_pieces[2]
+                        return f"{year}-{month}-{day} {time_part}"
+    try:
+        dt = pd.to_datetime(s)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except:
+        return s
+
+def parse_value_with_unit(val_str):
+    if pd.isna(val_str) or val_str is None:
+        return None
+    s = str(val_str).strip().lower()
+    if s == "" or s == "--":
+        return None
+    
+    multiplier = 1.0
+    clean = s
+    if s.endswith('mwh'):
+        multiplier = 1000.0
+        clean = s[:-3].strip()
+    elif s.endswith('kwh'):
+        clean = s[:-3].strip()
+    elif s.endswith('wh'):
+        multiplier = 0.001
+        clean = s[:-2].strip()
+    elif s.endswith('kwp'):
+        clean = s[:-3].strip()
+    elif s.endswith('kw'):
+        clean = s[:-2].strip()
+    elif s.endswith('w'):
+        multiplier = 0.001
+        clean = s[:-1].strip()
+    elif s.endswith('h'):
+        clean = s[:-1].strip()
+    elif s.endswith('°c') or s.endswith('c'):
+        clean = s[:-2].strip() if s.endswith('°c') else s[:-1].strip()
+        
+    try:
+        return float(clean) * multiplier
+    except:
+        try:
+            return float(clean)
+        except:
+            return None
 
 def init_driver():
     print("Initializing Chrome browser...")
@@ -191,32 +284,56 @@ def scrape_plant_details(driver):
 def save_to_excel(df_new):
     print(f"Saving data to Excel file: {EXCEL_FILE}")
     
+    df_existing = pd.DataFrame()
     if os.path.exists(EXCEL_FILE):
-        print("Reading existing Excel data to merge...")
         try:
-            df_old = pd.read_excel(EXCEL_FILE)
-            df_combined = pd.concat([df_old, df_new], ignore_index=True)
+            excel_file = pd.ExcelFile(EXCEL_FILE)
+            if "Telemetry" in excel_file.sheet_names:
+                df_existing = pd.read_excel(EXCEL_FILE, sheet_name="Telemetry")
         except Exception as e:
-            print(f"Warning: Could not read existing Excel file ({e}). Writing fresh.")
-            df_combined = df_new
+            print(f"Warning: Could not read existing Excel file ({e}).")
+            
+    if not df_existing.empty:
+        df_existing['plant_id'] = df_existing['plant_id'].astype(int)
+        df_existing['timestamp'] = df_existing['timestamp'].astype(str)
+        df_new['plant_id'] = df_new['plant_id'].astype(int)
+        df_new['timestamp'] = df_new['timestamp'].astype(str)
+        df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_combined = df_new
         
-    # Deduplicate rows by Plant Name and Scrape Time
-    initial_count = len(df_combined)
-    df_combined = df_combined.drop_duplicates(subset=["Plant Name", "Scrape Time"], keep="last").reset_index(drop=True)
-    duplicates_removed = initial_count - len(df_combined)
-    if duplicates_removed > 0:
-        print(f"Removed {duplicates_removed} duplicate rows.")
-        
+    # Deduplicate rows by plant_id and timestamp
+    df_combined = df_combined.sort_values(by="timestamp", ascending=False)
+    df_combined = df_combined.drop_duplicates(subset=["plant_id", "timestamp"], keep="first")
+    df_combined = df_combined.sort_values(by=["timestamp", "plant_id"]).reset_index(drop=True)
+    
+    # Re-assign id
+    df_combined["id"] = df_combined.index + 1
+    
+    # Ensure correct columns order
+    cols_order = ["id", "plant_id", "timestamp", "power", "voltage", "current", "frequency", 
+                  "irradiance", "daily_generation", "total_generation", "temperature", "status", "raw_json", "created_at"]
+    for col in cols_order:
+        if col not in df_combined.columns:
+            df_combined[col] = None
+    df_combined = df_combined[cols_order]
+    
     try:
-        df_combined.to_excel(EXCEL_FILE, index=False)
-        print(f"SUCCESS! Total {len(df_combined)} rows written to '{EXCEL_FILE}'.")
+        with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl") as writer:
+            df_combined.to_excel(writer, sheet_name="Telemetry", index=False)
+            
+            plants_data = [{"id": pid, "plant_name": name.upper()} for name, pid in PLANT_MAPPING.items()]
+            df_plants = pd.DataFrame(plants_data).sort_values(by="id")
+            df_plants.to_excel(writer, sheet_name="Plants", index=False)
+        print(f"SUCCESS! Unified Telemetry sheet updated. Total {len(df_combined)} rows written.")
     except PermissionError:
         backup = os.path.join(os.path.dirname(EXCEL_FILE), f"solar_data_backup_{int(time.time())}.xlsx")
-        print(f"\nERROR: Permission denied writing to '{EXCEL_FILE}'. Is it open in Excel?")
-        print(f"Saving data to backup file '{backup}' instead to prevent data loss.")
-        df_combined.to_excel(backup, index=False)
+        print(f"\nERROR: Permission denied writing to '{EXCEL_FILE}'. Saving to backup '{backup}' instead.")
+        try:
+            with pd.ExcelWriter(backup, engine="openpyxl") as writer:
+                df_combined.to_excel(writer, sheet_name="Telemetry", index=False)
+        except Exception as e:
+            print(f"Could not write backup: {e}")
 
 def main():
     driver = init_driver()
@@ -296,26 +413,19 @@ def main():
                 
             # Compile merged row data
             row_data = {
-                "Scrape Time": scrape_time,
-                "Plant Name": plant_name,
-                "Plant Type": plant.get("Plant Type", ""),
-                "Plant Status": plant.get("Plant Status", ""),
-                "Grid Status": plant.get("Grid Status", ""),
-                "User Name": plant.get("User Name", ""),
-                "Country/Region": plant.get("Country/Region", ""),
-                "Location": plant.get("Location", ""),
-                "Zip Code": plant.get("Zip Code", ""),
-                "Service Provider": plant.get("Service Provider", ""),
-                "Overview PV Capacity": plant.get("PV Capacity(kWp)", "") or plant.get("PV Capacity", ""),
-                "Overview Battery Capacity": plant.get("Battery Capacity(kWh)", "") or plant.get("Battery Capacity", ""),
-                "Overview Daily Yield": plant.get("Daily Yield(kWh)", "") or plant.get("Daily Yield", ""),
-                "Overview Charged Today": plant.get("Charged Today(kWh)", "") or plant.get("Charged Today", ""),
-                "Overview Discharged Today": plant.get("Discharged Today(kWh)", "") or plant.get("Discharged Today", ""),
-                "Detailed Daily Solar": details.get("Daily solar", ""),
-                "Detailed Daily Consumption": details.get("Detailed Daily Consumption", "") or details.get("Daily consumption", ""),
-                "Detailed PV Capacity": details.get("PV Capacity", ""),
-                "Detailed PV Power": details.get("PV Power", ""),
-                "Detailed Imported Energy": details.get("Imported energy", "")
+                "plant_id": int(get_plant_id(plant_name)),
+                "timestamp": str(clean_timestamp(scrape_time)),
+                "power": parse_value_with_unit(details.get("PV Power") or plant.get("PV Capacity(kWp)") or plant.get("PV Capacity")),
+                "voltage": None,
+                "current": None,
+                "frequency": None,
+                "irradiance": None,
+                "daily_generation": parse_value_with_unit(details.get("Daily solar") or plant.get("Daily Yield(kWh)") or plant.get("Daily Yield")),
+                "total_generation": None,
+                "temperature": None,
+                "status": plant.get("Plant Status", "Normal"),
+                "raw_json": json.dumps({**plant, **details}, default=str),
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             all_rows.append(row_data)
             

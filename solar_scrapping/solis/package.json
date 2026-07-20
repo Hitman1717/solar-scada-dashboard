@@ -1,0 +1,13 @@
+{
+  "name": "solis-scraper",
+  "version": "1.0.0",
+  "description": "JavaScript version of Solis cloud dashboard scraper",
+  "main": "solis.js",
+  "scripts": {
+    "start": "node solis.js"
+  },
+  "dependencies": {
+    "puppeteer": "^22.12.0",
+    "xlsx": "^0.18.5"
+  }
+}

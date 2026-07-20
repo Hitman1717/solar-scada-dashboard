@@ -1,4 +1,5 @@
 // dbService.js - Mock Database Layer stored in LocalStorage
+import excelData from './excel_data.json';
 
 const DB_KEY_PREFIX = 'solar_scada_';
 
@@ -153,23 +154,69 @@ function readTable(tableName) {
   return val ? JSON.parse(val) : null;
 }
 
-// Initialize Database if not already present (forced cache reset for v5)
+// Initialize Database if not already present or if Excel data changed
 export function initializeDB() {
-  const isInitialized = localStorage.getItem(DB_KEY_PREFIX + 'initialized_v5');
-  if (!isInitialized) {
-    // Aggressive clear to wipe previous local storage cache completely
+  const localTelemetry = readTable(TABLES.TELEMETRY) || [];
+  const localPlants = readTable(TABLES.PLANTS) || [];
+  const excelTelemetry = excelData.telemetry || [];
+  const excelPlants = excelData.plants || [];
+
+  const needsReinit = localTelemetry.length !== excelTelemetry.length || 
+                      localPlants.length !== excelPlants.length ||
+                      !localStorage.getItem(DB_KEY_PREFIX + 'initialized_excel_v1');
+
+  if (needsReinit) {
+    // Clear to reload fresh
     localStorage.clear();
 
     // Seed base tables
     Object.keys(INITIAL_DATA).forEach(table => {
-      writeTable(table, INITIAL_DATA[table]);
+      if (table !== TABLES.PLANTS && table !== TABLES.TELEMETRY && table !== TABLES.PLANT_USERS && table !== TABLES.WEBSITE_ACCOUNTS) {
+        writeTable(table, INITIAL_DATA[table]);
+      }
     });
-    
-    // Seed telemetry
-    const telemetryData = generateTelemetrySeed();
-    writeTable(TABLES.TELEMETRY, telemetryData);
 
-    localStorage.setItem(DB_KEY_PREFIX + 'initialized_v5', 'true');
+    // Seed Plants from Excel
+    writeTable(TABLES.PLANTS, excelPlants);
+
+    // Seed Telemetry from Excel
+    writeTable(TABLES.TELEMETRY, excelTelemetry);
+
+    // Dynamic Plant-User mapping
+    const plantUsers = [];
+    excelPlants.forEach(p => {
+      plantUsers.push({ user_id: 1, plant_id: p.id }); // Admin
+      plantUsers.push({ user_id: 2, plant_id: p.id }); // Management
+    });
+    writeTable(TABLES.PLANT_USERS, plantUsers);
+
+    // Dynamic Website Accounts mapping
+    const websiteAccounts = [];
+    excelPlants.forEach(p => {
+      let providerId = 1;
+      if (p.id >= 5) {
+        providerId = 2; // Solis
+      } else if (p.id === 3 || p.id === 4) {
+        providerId = 3; // Solax
+      }
+      
+      websiteAccounts.push({
+        id: p.id,
+        plant_id: p.id,
+        provider_id: providerId,
+        username: `plant.${p.id}.user`,
+        password: 'password123',
+        scrape_interval_minutes: 5,
+        enabled: true,
+        last_scraped_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    });
+    writeTable(TABLES.WEBSITE_ACCOUNTS, websiteAccounts);
+
+    localStorage.setItem(DB_KEY_PREFIX + 'initialized_excel_v1', 'true');
+    console.log("Successfully initialized database with Excel data.");
   }
 }
 

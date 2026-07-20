@@ -1,0 +1,12 @@
+{
+  "name": "solar-scrappers-runner",
+  "version": "1.0.0",
+  "description": "Sequentially run all solar SCADA scrapers",
+  "main": "run_all.js",
+  "scripts": {
+    "dev": "node run_all.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

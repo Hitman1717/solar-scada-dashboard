@@ -10,7 +10,62 @@ from selenium.webdriver.chrome.service import Service
 LOGIN_URL = "https://pv.polycabmonitoring.com/dist/#/login/index"
 USERNAME = "oaksun"
 PASSWORD = "Solar@123"
-EXCEL_FILE = "solar_data.xlsx"
+EXCEL_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "solar_data.xlsx"))
+
+PLANT_MAPPING = {
+    "my space study hall 1": 1,
+    "my space study hall": 2,
+    "vasudev blue flied site": 3,
+    "villa num 111": 4,
+    "rv2": 5,
+    "rv1": 6,
+    "melgiri enterprises house 3": 7,
+    "melgiri enterprises": 8,
+    "melgiri enterprises house 2": 9,
+    "melgiri farm 02": 10,
+    "melgiri farms 01": 11,
+    "magna villa 15": 12,
+    "abhilash reddy incrible hallmark villa no.24": 13,
+    "arya vysya anna satram": 14,
+    "central university of haryana": 15,
+    "magna villa 41": 16
+}
+
+def get_plant_id(plant_name):
+    key = str(plant_name).strip().lower()
+    if key in PLANT_MAPPING:
+        return PLANT_MAPPING[key]
+    new_id = max(PLANT_MAPPING.values()) + 1 if PLANT_MAPPING else 1
+    PLANT_MAPPING[key] = new_id
+    print(f"Warning: Dynamic plant mapping created for '{plant_name}' -> ID {new_id}")
+    return new_id
+
+def clean_timestamp(date_str):
+    if pd.isna(date_str) or not date_str:
+        return None
+    s = str(date_str).strip()
+    s = s.split('(')[0].strip()
+    
+    parts = s.split(' ')
+    if len(parts) >= 2:
+        date_part = parts[0]
+        time_part = parts[1]
+        for sep in ['/', '-']:
+            if sep in date_part:
+                date_pieces = date_part.split(sep)
+                if len(date_pieces) == 3:
+                    if len(date_pieces[0]) == 4:
+                        return f"{date_pieces[0]}-{date_pieces[1].zfill(2)}-{date_pieces[2].zfill(2)} {time_part}"
+                    else:
+                        day = date_pieces[0].zfill(2)
+                        month = date_pieces[1].zfill(2)
+                        year = date_pieces[2]
+                        return f"{year}-{month}-{day} {time_part}"
+    try:
+        dt = pd.to_datetime(s)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except:
+        return s
 
 # Targets we want to capture
 TARGET_ENDPOINTS = ["GetMemberData", "getAllAllMember", "GroupList", "MemberMonitor", "logsearch"]
@@ -249,9 +304,9 @@ def main():
                     # Save the latest response if multiple are found
                     sheets_data[ep] = df
                     
-        # Check if we captured anything
-        if not sheets_data:
-            print("\nWARNING: None of the target API responses were captured!")
+        # Check if we captured anything and have GroupList
+        if "GroupList" not in sheets_data or sheets_data["GroupList"].empty:
+            print("\nWARNING: GroupList API response was not captured or was empty!")
             print("Here are all the URLs that were captured:")
             for req in captured_data:
                 print(f"- [{req.get('method')}] {req.get('url')}")
@@ -262,85 +317,115 @@ def main():
             print("All raw captured data dumped to captured_raw.json for debugging.")
             return
 
-        # Read existing sheets if the file exists to append/merge data
-        existing_sheets = {}
-        if os.path.exists(EXCEL_FILE):
-            print(f"Found existing file '{EXCEL_FILE}'. Reading current sheets to append new data...")
-            try:
-                excel_file = pd.ExcelFile(EXCEL_FILE)
-                for sheet in excel_file.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(EXCEL_FILE, sheet_name=sheet)
-            except Exception as e:
-                print(f"Warning: Could not read existing Excel file ({e}). Will create a new one.")
-
-        # Combine new data with existing data
-        final_sheets = {}
-        for ep_name, df_new in sheets_data.items():
-            sheet_name = ep_name[:31]
+        print("Mapping Polycab GroupList data to unified Telemetry schema...")
+        df_group = sheets_data["GroupList"]
+        new_rows = []
+        for _, row in df_group.iterrows():
+            plant_name = row.get("GoodsTypeName")
+            if not plant_name or pd.isna(plant_name):
+                continue
             
-            # We ONLY append/merge for MemberMonitor and GroupList
-            if sheet_name in ["MemberMonitor", "GroupList"] and sheet_name in existing_sheets:
-                df_old = existing_sheets[sheet_name]
-                print(f"Merging new data with existing rows for sheet '{sheet_name}'...")
-                
-                # Combine old and new DataFrames
-                df_combined = pd.concat([df_old, df_new], ignore_index=True)
-                
-                # Ensure nested dicts/lists are converted to strings so they are hashable for deduplication
+            plant_id = get_plant_id(plant_name)
+            ts = clean_timestamp(row.get("LastUpdate"))
+            
+            # Parse status from InverterStatus dict or Light fallback
+            status = 'Normal'
+            inv_status = row.get("InverterStatus")
+            if inv_status and not pd.isna(inv_status):
                 try:
-                    for col in df_combined.columns:
-                        if df_combined[col].apply(lambda x: isinstance(x, (dict, list))).any():
-                            df_combined[col] = df_combined[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+                    status_str = str(inv_status).replace("'", '"')
+                    status_obj = json.loads(status_str)
+                    if status_obj.get("red", 0) > 0:
+                        status = 'Offline'
+                    elif status_obj.get("yellow", 0) > 0:
+                        status = 'Warning'
+                    elif status_obj.get("gray", 0) > 0:
+                        status = 'Offline'
                 except Exception as e:
-                    print(f" - Warning during column cleaning: {e}")
-                
-                # Drop exact duplicate rows
+                    light = row.get("Light")
+                    if light == 4:
+                        status = 'Offline'
+                    elif light == 3:
+                        status = 'Warning'
+            
+            # Power in kW (CurrPac is in Watts, divide by 1000)
+            power = float(row.get("CurrPac")) / 1000.0 if row.get("CurrPac") is not None and not pd.isna(row.get("CurrPac")) else None
+            
+            # Daily generation in kWh (EToday is in Wh, divide by 1000)
+            daily_gen = float(row.get("EToday")) / 1000.0 if row.get("EToday") is not None and not pd.isna(row.get("EToday")) else None
+            
+            # Total generation in kWh (ETotal is in Wh, divide by 1000)
+            total_gen = float(row.get("ETotal")) / 1000.0 if row.get("ETotal") is not None and not pd.isna(row.get("ETotal")) else None
+            
+            new_rows.append({
+                "plant_id": int(plant_id),
+                "timestamp": str(ts),
+                "power": power,
+                "voltage": None,
+                "current": None,
+                "frequency": None,
+                "irradiance": None,
+                "daily_generation": daily_gen,
+                "total_generation": total_gen,
+                "temperature": None,
+                "status": status,
+                "raw_json": json.dumps(row.to_dict(), default=str),
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+        if new_rows:
+            df_new = pd.DataFrame(new_rows)
+            df_existing = pd.DataFrame()
+            if os.path.exists(EXCEL_FILE):
                 try:
-                    initial_len = len(df_combined)
-                    df_combined = df_combined.drop_duplicates().reset_index(drop=True)
-                    duplicates_removed = initial_len - len(df_combined)
-                    if duplicates_removed > 0:
-                        print(f" - Removed {duplicates_removed} duplicate rows.")
+                    excel_file = pd.ExcelFile(EXCEL_FILE)
+                    if "Telemetry" in excel_file.sheet_names:
+                        df_existing = pd.read_excel(EXCEL_FILE, sheet_name="Telemetry")
                 except Exception as e:
-                    print(f" - Warning: Could not drop duplicates: {e}")
-                
-                final_sheets[sheet_name] = df_combined
+                    print(f"Warning: Could not read existing Telemetry sheet ({e}).")
+            
+            if not df_existing.empty:
+                df_existing['plant_id'] = df_existing['plant_id'].astype(int)
+                df_existing['timestamp'] = df_existing['timestamp'].astype(str)
+                df_new['plant_id'] = df_new['plant_id'].astype(int)
+                df_new['timestamp'] = df_new['timestamp'].astype(str)
+                df_combined = pd.concat([df_existing, df_new], ignore_index=True)
             else:
-                # For logsearch, GetMemberData, and getAllAllMember, we overwrite (use df_new directly)
-                print(f"Overwriting data for sheet '{sheet_name}' with new capture...")
-                try:
-                    for col in df_new.columns:
-                        if df_new[col].apply(lambda x: isinstance(x, (dict, list))).any():
-                            df_new[col] = df_new[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
-                except:
-                    pass
-                final_sheets[sheet_name] = df_new
-
-        # Preserve any sheets that exist in the file but weren't in the new capture
-        for sheet_name, df_old in existing_sheets.items():
-            if sheet_name not in final_sheets:
-                final_sheets[sheet_name] = df_old
-
-        # Write all sheets back to the Excel file
-        print(f"\nWriting merged data to {EXCEL_FILE}...")
-        try:
-            with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl") as writer:
-                for sheet_name, df in final_sheets.items():
-                    df.to_excel(writer, sheet_name=sheet_name, index=False)
-                    print(f" - Sheet '{sheet_name}': Total {len(df)} rows written.")
-            print(f"\nSUCCESS! Scraping complete. Excel file '{EXCEL_FILE}' updated successfully.")
-        except PermissionError:
-            backup_file = f"solar_data_backup_{int(time.time())}.xlsx"
-            print(f"\nERROR: Permission denied when writing to '{EXCEL_FILE}'.")
-            print(f"Is the Excel file open in another program (like Microsoft Excel)?")
-            print(f"Saving data to backup file '{backup_file}' instead to protect your scraped data.")
+                df_combined = df_new
+                
+            # Deduplicate by plant_id and timestamp, keeping the last scrape
+            df_combined = df_combined.sort_values(by="timestamp", ascending=False)
+            df_combined = df_combined.drop_duplicates(subset=["plant_id", "timestamp"], keep="first")
+            df_combined = df_combined.sort_values(by=["timestamp", "plant_id"]).reset_index(drop=True)
+            
+            # Re-assign id
+            df_combined["id"] = df_combined.index + 1
+            
+            # Ensure columns order
+            cols_order = ["id", "plant_id", "timestamp", "power", "voltage", "current", "frequency", 
+                          "irradiance", "daily_generation", "total_generation", "temperature", "status", "raw_json", "created_at"]
+            for col in cols_order:
+                if col not in df_combined.columns:
+                    df_combined[col] = None
+            df_combined = df_combined[cols_order]
+            
+            # Write back
             try:
-                with pd.ExcelWriter(backup_file, engine="openpyxl") as writer:
-                    for sheet_name, df in final_sheets.items():
-                        df.to_excel(writer, sheet_name=sheet_name, index=False)
-                print(f"Backup file '{backup_file}' saved successfully! Please close '{EXCEL_FILE}' before running next time.")
-            except Exception as e:
-                print(f"Could not write backup file either: {e}")
+                with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl") as writer:
+                    df_combined.to_excel(writer, sheet_name="Telemetry", index=False)
+                    
+                    plants_data = [{"id": pid, "plant_name": name.upper()} for name, pid in PLANT_MAPPING.items()]
+                    df_plants = pd.DataFrame(plants_data).sort_values(by="id")
+                    df_plants.to_excel(writer, sheet_name="Plants", index=False)
+                print(f"SUCCESS! Telemetry sheet updated. Total {len(df_combined)} rows written.")
+            except PermissionError:
+                backup = f"solar_data_backup_{int(time.time())}.xlsx"
+                print(f"\nERROR: Permission denied when writing to '{EXCEL_FILE}'. Saving to '{backup}' instead.")
+                try:
+                    with pd.ExcelWriter(backup, engine="openpyxl") as writer:
+                        df_combined.to_excel(writer, sheet_name="Telemetry", index=False)
+                except Exception as e:
+                    print(f"Could not write backup either: {e}")
 
 
         
