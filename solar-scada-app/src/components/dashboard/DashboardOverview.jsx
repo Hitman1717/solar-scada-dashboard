@@ -178,7 +178,7 @@ export default function DashboardOverview({ plants = [], issues = [] }) {
               <div className="space-y-0.5">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">PV Capacity</span>
                 <div className="text-xl font-bold font-mono text-slate-800">
-                  {totalPV > 0 ? `${totalPV.toFixed(2)} kWp` : '25.00 kWp'}
+                  {totalPV > 0 ? `${totalPV.toFixed(2)} kWp` : '0.00 kWp'}
                 </div>
               </div>
             </div>
@@ -349,6 +349,81 @@ export default function DashboardOverview({ plants = [], issues = [] }) {
         </div>
 
       </div>
+
+      {/* 3.5. ACTIVE SCADA ALERTS & ANOMALIES */}
+      {activeIssues.length > 0 ? (
+        <div className="bg-white border border-red-200 rounded-xl p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-red-100 pb-2">
+            <div className="flex items-center space-x-2 text-red-750">
+              <AlertCircle className="w-5 h-5 animate-pulse text-red-600" />
+              <h4 className="font-bold text-sm">Active SCADA Alerts & Anomalies</h4>
+            </div>
+            <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {activeIssues.length} Active Alarms
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
+                  <th className="p-3">Station / Plant</th>
+                  <th className="p-3">Type</th>
+                  <th className="p-3">Severity</th>
+                  <th className="p-3">Details / Message</th>
+                  <th className="p-3">Time Triggered</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-150">
+                {activeIssues.map(issue => {
+                  const plantName = plants.find(p => p.id === issue.plant_id)?.plant_name || `Plant #${issue.plant_id}`;
+                  const isCritical = issue.severity === 'Critical';
+                  
+                  return (
+                    <tr key={issue.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-bold text-slate-800">{plantName}</td>
+                      <td className="p-3">
+                        <span className="font-semibold text-slate-600">{issue.issue_type}</span>
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold ${
+                          isCritical 
+                            ? 'bg-red-50 border border-red-200 text-red-700' 
+                            : 'bg-amber-50 border border-amber-250 text-amber-700'
+                        }`}>
+                          {issue.severity}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-600 font-medium italic">{issue.message}</td>
+                      <td className="p-3 font-mono text-slate-400">
+                        {new Date(issue.started_at).toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Normal operation banner */
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center space-x-3 text-slate-700">
+            <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center shadow-inner">
+              <svg className="w-5 h-5 text-green-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h5 className="font-bold text-xs text-slate-800">SCADA Network Health</h5>
+              <p className="text-[10px] text-slate-400 font-medium">All active stations operating within nominal limits (±5% deviation bounds).</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-[#16a34a] bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Nominal
+          </span>
+        </div>
+      )}
 
       {/* 4. ADVANCED ENERGY STATISTICS BAR CHART */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">

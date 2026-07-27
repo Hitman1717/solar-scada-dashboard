@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model audit_logs {
+  id          Int       @id @default(autoincrement())
+  user_id     Int?
+  action      String    @db.VarChar(255)
+  entity_type String?   @db.VarChar(100)
+  entity_id   Int?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  users       users?    @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+}
+
+model companies {
+  id                Int                 @id @default(autoincrement())
+  company_name      String              @db.VarChar(255)
+  address           String?
+  contact_person    String?             @db.VarChar(255)
+  contact_email     String?             @db.VarChar(255)
+  contact_phone     String?             @db.VarChar(50)
+  status            String?             @default("Active") @db.VarChar(50)
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  company_variables company_variables[]
+  plants            plants[]
+  users             users[]
+}
+
+model company_variables {
+  id             Int        @id @default(autoincrement())
+  company_id     Int?
+  plant_id       Int?
+  timestamp      DateTime?  @default(now()) @db.Timestamptz(6)
+  variable_name  String     @db.VarChar(255)
+  variable_value String?
+  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  companies      companies? @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  plants         plants?    @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model plant_issues {
+  id           Int        @id @default(autoincrement())
+  plant_id     Int?
+  telemetry_id Int?
+  issue_type   String     @db.VarChar(255)
+  severity     String     @db.VarChar(50)
+  message      String?
+  status       String?    @default("Active") @db.VarChar(50)
+  started_at   DateTime   @db.Timestamptz(6)
+  resolved_at  DateTime?  @db.Timestamptz(6)
+  created_at   DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?  @default(now()) @db.Timestamptz(6)
+  plants       plants?    @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  telemetry    telemetry? @relation(fields: [telemetry_id], references: [id], onUpdate: NoAction)
+}
+
+model plant_tables {
+  id             Int      @id @default(autoincrement())
+  plant_id       Int?
+  table_number   String   @db.VarChar(100)
+  panels_count   Int?     @default(10)
+  panel_model    String?  @db.VarChar(255)
+  inverter_model String?  @db.VarChar(255)
+  gateway_id     String?  @db.VarChar(100)
+  mac_address    String?  @db.VarChar(100)
+  degrade_pct    Decimal? @default(0) @db.Decimal(5, 2)
+  age_years      Decimal? @default(0) @db.Decimal(5, 2)
+  power_w        Decimal? @default(0) @db.Decimal(10, 2)
+  plants         plants?  @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model plant_users {
+  user_id  Int
+  plant_id Int
+  plants   plants @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users    users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, plant_id])
+}
+
+model plants {
+  id                Int                 @id @default(autoincrement())
+  company_id        Int?
+  plant_name        String              @db.VarChar(255)
+  plant_capacity    String?             @db.VarChar(100)
+  location          String?             @db.VarChar(255)
+  latitude          Decimal?            @db.Decimal(9, 6)
+  longitude         Decimal?            @db.Decimal(9, 6)
+  status            String?             @default("Normal") @db.VarChar(50)
+  commission_date   DateTime?           @db.Date
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  company_variables company_variables[]
+  plant_issues      plant_issues[]
+  plant_tables      plant_tables[]
+  plant_users       plant_users[]
+  companies         companies?          @relation(fields: [company_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  telemetry         telemetry[]
+  website_accounts  website_accounts[]
+}
+
+model telemetry {
+  id               Int            @id @default(autoincrement())
+  plant_id         Int?
+  timestamp        DateTime       @db.Timestamptz(6)
+  present_power    Decimal?       @default(0.00) @db.Decimal(10, 2)
+  voltage          Decimal?       @default(0.00) @db.Decimal(10, 2)
+  current          Decimal?       @default(0.00) @db.Decimal(10, 2)
+  frequency        Decimal?       @default(0.00) @db.Decimal(10, 2)
+  daily_generation Decimal?       @default(0.00) @db.Decimal(10, 2)
+  total_generation Decimal?       @default(0.00) @db.Decimal(15, 2)
+  temperature      Decimal?       @default(0.00) @db.Decimal(5, 2)
+  status           String?        @default("Normal") @db.VarChar(50)
+  irradiance       Decimal?       @default(0.00) @db.Decimal(10, 2)
+  plant_type       String?        @default("Residential") @db.VarChar(50)
+  grid_status      String?        @default("On-grid") @db.VarChar(50)
+  battery_voltage  Decimal?       @default(0.00) @db.Decimal(10, 2)
+  daily_charge     Decimal?       @default(0.00) @db.Decimal(10, 2)
+  daily_discharge  Decimal?       @default(0.00) @db.Decimal(10, 2)
+  daily_consumed   Decimal?       @default(0.00) @db.Decimal(10, 2)
+  imported_energy  Decimal?       @default(0.00) @db.Decimal(10, 2)
+  raw_json         String?
+  created_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  plant_issues     plant_issues[]
+  plants           plants?        @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id          Int           @id @default(autoincrement())
+  company_id  Int?
+  name        String        @db.VarChar(255)
+  email       String        @unique @db.VarChar(255)
+  password    String        @db.VarChar(255)
+  role        String        @db.VarChar(50)
+  is_active   Boolean?      @default(true)
+  last_login  DateTime?     @db.Timestamptz(6)
+  created_at  DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?     @default(now()) @db.Timestamptz(6)
+  audit_logs  audit_logs[]
+  plant_users plant_users[]
+  companies   companies?    @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+}
+
+model website_accounts {
+  id                      Int                @id @default(autoincrement())
+  plant_id                Int?
+  provider_id             Int?
+  username                String             @db.VarChar(255)
+  password                String             @db.VarChar(255)
+  scrape_interval_minutes Int?               @default(5)
+  enabled                 Boolean?           @default(true)
+  last_scraped_at         DateTime?          @db.Timestamptz(6)
+  created_at              DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime?          @default(now()) @db.Timestamptz(6)
+  plants                  plants?            @relation(fields: [plant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  website_providers       website_providers? @relation(fields: [provider_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+}
+
+model website_providers {
+  id               Int                @id @default(autoincrement())
+  provider_name    String             @unique @db.VarChar(255)
+  login_url        String?            @db.VarChar(255)
+  description      String?
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  website_accounts website_accounts[]
+}

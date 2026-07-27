@@ -1,6 +1,6 @@
 // AdminApp.jsx - Administrator Dashboard (Aligned with Excel seed data, Dashboard Plants Table and Clickable Names)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../../services/dbService';
 import { runSimulationTick } from '../../../services/simulationService';
 import {
@@ -8,15 +8,26 @@ import {
   Search, RefreshCw, KeyRound, Globe, ToggleLeft, ToggleRight, ArrowLeft, Download, Eye, EyeOff
 } from 'lucide-react';
 import DashboardOverview from '../../../components/dashboard/DashboardOverview';
+import CompanyVariablesView from '../../../components/dashboard/CompanyVariablesView';
 
-export default function AdminApp({ currentUser, currentTab, activePlant, setActivePlant }) {
+export default function AdminApp({ currentUser, currentTab, activePlant, setActivePlant, activePlantTelemetry }) {
   // DB States
-  const [plants, setPlants] = useState(() => db.getAll(db.TABLES.PLANTS).filter(p => p.company_id === currentUser.company_id));
-  const [users, setUsers] = useState(() => db.getAll(db.TABLES.USERS).filter(u => u.company_id === currentUser.company_id));
+  const [plants, setPlants] = useState(() => db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id)));
+  const [users, setUsers] = useState(() => db.getAll(db.TABLES.USERS).filter(u => Number(u.company_id) === Number(currentUser?.company_id)));
   const [accounts, setAccounts] = useState(() => db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
   const [providers, setProviders] = useState(() => db.getAll(db.TABLES.WEBSITE_PROVIDERS));
   const [issues, setIssues] = useState(() => db.getAll(db.TABLES.PLANT_ISSUES));
   const [tablesList, setTablesList] = useState(() => db.getAll(db.TABLES.PLANT_TABLES));
+
+  // Sync state with database whenever telemetry tick or backend synchronizes
+  useEffect(() => {
+    setPlants(db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id)));
+    setUsers(db.getAll(db.TABLES.USERS).filter(u => Number(u.company_id) === Number(currentUser?.company_id)));
+    setAccounts(db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
+    setProviders(db.getAll(db.TABLES.WEBSITE_PROVIDERS));
+    setIssues(db.getAll(db.TABLES.PLANT_ISSUES));
+    setTablesList(db.getAll(db.TABLES.PLANT_TABLES));
+  }, [activePlantTelemetry, currentUser]);
 
   // Navigation Sub-states
   const [selectedPlantId, setSelectedPlantId] = useState(null); // null means list view, plantId means detail view
@@ -50,11 +61,24 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
   const [newPlantName, setNewPlantName] = useState('');
   const [newPlantCapacity, setNewPlantCapacity] = useState('');
   const [newPlantLoc, setNewPlantLoc] = useState('');
-  const [newPlantProvider, setNewPlantProvider] = useState(1);
+  const [newPlantProvider, setNewPlantProvider] = useState('other');
   const [newPlantUser, setNewPlantUser] = useState('');
   const [newPlantPass, setNewPlantPass] = useState('');
   const [newPlantInterval, setNewPlantInterval] = useState(5);
   const [customProviderName, setCustomProviderName] = useState('');
+
+  // Set default provider dynamically from database when onboarding page is opened
+  useEffect(() => {
+    if (isAddingPlant) {
+      const list = db.getAll(db.TABLES.WEBSITE_PROVIDERS);
+      if (list.length > 0) {
+        setNewPlantProvider(list[0].id);
+      } else {
+        setNewPlantProvider('other');
+      }
+      setCustomProviderName('');
+    }
+  }, [isAddingPlant]);
 
   // Form Fields - Edit Plant
   const [editPlantName, setEditPlantName] = useState('');
@@ -81,19 +105,36 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
   const [currPass, setCurrPass] = useState('');
   const [newPass, setNewPass] = useState('');
 
-  // Scraper Manual Tick trigger
-  const triggerRefreshData = (plantId) => {
-    runSimulationTick(plantId);
-    setIssues(db.getAll(db.TABLES.PLANT_ISSUES));
-    setTablesList(db.getAll(db.TABLES.PLANT_TABLES));
-    setAccounts(db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
+  const [isScraping, setIsScraping] = useState(false);
 
-    // Refresh parent state if needed
-    const updatedPlantObj = plants.find(p => p.id === plantId);
-    if (updatedPlantObj && activePlant && activePlant.id === plantId) {
-      setActivePlant({ ...updatedPlantObj });
+  // Scraper Manual Tick trigger
+  const triggerRefreshData = async (plantId) => {
+    setIsScraping(true);
+    try {
+      const result = await db.triggerScrape(plantId);
+      if (result.success) {
+        // Re-fetch all state from DB cache after scrape completes
+        const freshPlants = db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id));
+        setIssues(db.getAll(db.TABLES.PLANT_ISSUES));
+        setTablesList(db.getAll(db.TABLES.PLANT_TABLES));
+        setAccounts(db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
+        setPlants(freshPlants);
+
+        const updatedPlantObj = freshPlants.find(p => Number(p.id) === Number(plantId));
+        if (updatedPlantObj && activePlant && Number(activePlant.id) === Number(plantId)) {
+          setActivePlant({ ...updatedPlantObj });
+        }
+        // Use setTimeout so React can re-render before blocking with alert
+        setTimeout(() => alert(result.message || 'Scraper execution and synchronization completed.'), 100);
+      } else {
+        alert(`Scraper error: ${result.error}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to execute backend scraper: ' + err.message);
+    } finally {
+      setIsScraping(false);
     }
-    alert('Station telemetry refreshed. Scraping update completed.');
   };
 
   // User/Staff Registry Actions
@@ -119,7 +160,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
 
     db.logAudit(currentUser.id, `Registered staff account ${staffName} (${staffRole})`, 'User', newStaff.id);
 
-    setUsers(db.getAll(db.TABLES.USERS).filter(u => u.company_id === currentUser.company_id));
+    setUsers(db.getAll(db.TABLES.USERS).filter(u => Number(u.company_id) === Number(currentUser?.company_id)));
     setStaffName('');
     setStaffEmail('');
     setStaffPassword('');
@@ -132,30 +173,28 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
     if (!userObj) return;
     const newStatus = !userObj.is_active;
     db.update(db.TABLES.USERS, userId, { is_active: newStatus });
-    setUsers(db.getAll(db.TABLES.USERS).filter(u => u.company_id === currentUser.company_id));
+    setUsers(db.getAll(db.TABLES.USERS).filter(u => Number(u.company_id) === Number(currentUser?.company_id)));
     db.logAudit(currentUser.id, `Toggled user status of ${userObj.name} to ${newStatus}`, 'User', userId);
   };
 
   const handleDeleteStaff = (userId) => {
     if (confirm('Delete this user?')) {
       db.delete(db.TABLES.USERS, userId);
-      setUsers(db.getAll(db.TABLES.USERS).filter(u => u.company_id === currentUser.company_id));
+      setUsers(db.getAll(db.TABLES.USERS).filter(u => Number(u.company_id) === Number(currentUser?.company_id)));
       db.logAudit(currentUser.id, `Deleted staff account ID: ${userId}`, 'User', userId);
     }
   };
 
   // Plant Actions
-  const handleAddPlant = (e) => {
+  const handleAddPlant = async (e) => {
     e.preventDefault();
-    if (!newPlantName || !newPlantCapacity) {
-      alert('Required fields missing.');
-      return;
-    }
+    setIsScraping(true);
 
-    let providerId = Number(newPlantProvider);
+    let providerId = newPlantProvider;
     if (newPlantProvider === 'other') {
       if (!customProviderName) {
         alert('Please specify the website provider name.');
+        setIsScraping(false);
         return;
       }
       const insertedProv = db.insert(db.TABLES.WEBSITE_PROVIDERS, {
@@ -167,55 +206,41 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
       setProviders(db.getAll(db.TABLES.WEBSITE_PROVIDERS));
     }
 
-    const insertedPlant = db.insert(db.TABLES.PLANTS, {
-      company_id: currentUser.company_id,
-      plant_name: newPlantName,
-      plant_capacity: newPlantCapacity,
-      location: newPlantLoc || 'Unknown',
-      status: 'Normal',
-      commission_date: new Date().toISOString().split('T')[0]
-    });
+    try {
+      console.log('Sending onboarding credentials to backend...');
+      const result = await db.onboardScraperAccount(
+        providerId,
+        newPlantUser || 'scada_user',
+        newPlantPass || 'password',
+        newPlantInterval
+      );
 
-    db.assignPlantToUser(currentUser.id, insertedPlant.id);
+      if (result.success) {
+        alert(result.message || 'Scraper credentials onboarded and plants discovered successfully!');
+        
+        // Refresh local cache states from newly reloaded cache
+        setPlants(db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id)));
+        setAccounts(db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
+        setProviders(db.getAll(db.TABLES.WEBSITE_PROVIDERS));
+        setIssues(db.getAll(db.TABLES.PLANT_ISSUES));
 
-    db.insert(db.TABLES.WEBSITE_ACCOUNTS, {
-      plant_id: insertedPlant.id,
-      provider_id: providerId,
-      username: newPlantUser || 'scada_user',
-      password: newPlantPass || 'password',
-      scrape_interval_minutes: Number(newPlantInterval),
-      enabled: true,
-      last_scraped_at: new Date().toISOString()
-    });
-
-    for (let i = 1; i <= 3; i++) {
-      db.insert(db.TABLES.PLANT_TABLES, {
-        plant_id: insertedPlant.id,
-        table_number: `T-0${i}`,
-        panels_count: 10,
-        panel_model: 'Oaksun-100W',
-        inverter_model: 'Oaksun Inv 1',
-        gateway_id: 'GW-01',
-        mac_address: `00:1A:2B:3C:4D:0${i}`,
-        degrade_pct: 1,
-        age_years: 1,
-        power_w: 4200
-      });
+        // Reset fields
+        setNewPlantUser('');
+        setNewPlantPass('');
+        setNewPlantInterval(5);
+        setCustomProviderName('');
+        
+        // Close add plant view
+        setIsAddingPlant(false);
+      } else {
+        alert(`Error: ${result.error || 'Failed to onboard scraper account.'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to connect to backend onboarding service.');
+    } finally {
+      setIsScraping(false);
     }
-
-    db.logAudit(currentUser.id, `Created station ${newPlantName}`, 'Plant', insertedPlant.id);
-
-    setPlants(db.getAll(db.TABLES.PLANTS).filter(p => p.company_id === currentUser.company_id));
-    setAccounts(db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
-    setTablesList(db.getAll(db.TABLES.PLANT_TABLES));
-
-    setNewPlantName('');
-    setNewPlantCapacity('');
-    setNewPlantLoc('');
-    setNewPlantUser('');
-    setNewPlantPass('');
-    setCustomProviderName('');
-    setIsAddingPlant(false);
   };
 
   const handleEditPlant = (e) => {
@@ -230,7 +255,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
 
     db.logAudit(currentUser.id, `Updated parameters for station ${editPlantName}`, 'Plant', selectedPlantId);
 
-    setPlants(db.getAll(db.TABLES.PLANTS).filter(p => p.company_id === currentUser.company_id));
+    setPlants(db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id)));
     setIsEditingPlant(false);
   };
 
@@ -243,7 +268,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
 
       tablesList.filter(t => t.plant_id === plantId).forEach(t => db.delete(db.TABLES.PLANT_TABLES, t.id));
 
-      setPlants(db.getAll(db.TABLES.PLANTS).filter(p => p.company_id === currentUser.company_id));
+      setPlants(db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id)));
       setAccounts(db.getAll(db.TABLES.WEBSITE_ACCOUNTS));
       setTablesList(db.getAll(db.TABLES.PLANT_TABLES));
       setSelectedPlantId(null);
@@ -334,7 +359,10 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
       plant.location.toLowerCase().includes(plantSearch.toLowerCase());
 
     let matchesStatus = true;
-    if (plantStatusFilter !== 'All') {
+    if (plantStatusFilter === 'WithIssues') {
+      const activeIssuesForPlant = issues.filter(i => Number(i.plant_id) === Number(plant.id) && i.status === 'Active');
+      matchesStatus = activeIssuesForPlant.length > 0;
+    } else if (plantStatusFilter !== 'All') {
       matchesStatus = plant.status === plantStatusFilter;
     }
     return matchesSearch && matchesStatus;
@@ -352,13 +380,13 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
   });
 
   const totalPages = Math.ceil(sortedPlants.length / itemsPerPage);
-  const paginatedPlants = sortedPlants.slice((plantPage - 1) * itemsPerPage, plantPage * itemsPerPage);
+  const paginatedPlants = sortedPlants;
 
   // Selected Plant Telemetry & details calculations
-  const detailPlant = plants.find(p => p.id === selectedPlantId);
-  const detailAccount = accounts.find(a => a.plant_id === selectedPlantId);
-  const detailProvider = providers.find(p => p.id === detailAccount?.provider_id);
-  const detailTables = tablesList.filter(t => t.plant_id === selectedPlantId);
+  const detailPlant = plants.find(p => Number(p.id) === Number(selectedPlantId));
+  const detailAccount = accounts.find(a => Number(a.plant_id) === Number(selectedPlantId));
+  const detailProvider = providers.find(p => Number(p.id) === Number(detailAccount?.provider_id));
+  const detailTables = tablesList.filter(t => Number(t.plant_id) === Number(selectedPlantId));
 
   // Load latest telemetry entry
   const detailTelemetry = selectedPlantId ? db.getTelemetryForPlant(selectedPlantId, 1)[0] : null;
@@ -415,8 +443,8 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                     const acc = accounts.find(a => a.plant_id === plant.id);
                     const prov = providers.find(p => p.id === acc?.provider_id);
                     const tele = db.getTelemetryForPlant(plant.id, 1)[0];
-                    const powerVal = tele ? (tele.pv_power || tele.power) : 0;
-                    const yieldVal = tele ? tele.daily_generation : 0;
+                    const powerVal = tele ? parseFloat(tele.pv_power || tele.power || 0) : 0;
+                    const yieldVal = tele ? parseFloat(tele.daily_generation || 0) : 0;
 
                     return (
                       <tr key={plant.id} className="hover:bg-slate-50">
@@ -466,11 +494,11 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
       )}
 
       {/* 2. PLANTS VIEW */}
-      {currentTab === 'plants' && (
+      {currentTab === 'plants' && !selectedPlantId && (
         <div className="space-y-6">
 
           {/* PLANT REGISTRY LIST VIEW */}
-          {!selectedPlantId && !isAddingPlant && (
+          {!isAddingPlant && (
             <div className="space-y-4">
               <div className="border-b border-slate-200 pb-3 flex justify-between items-center">
                 <h2 className="text-xl font-bold text-slate-800">Plants Registry</h2>
@@ -505,6 +533,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                       className="bg-white border border-slate-250 rounded px-2 py-1 focus:outline-none"
                     >
                       <option value="All">All Plants</option>
+                      <option value="WithIssues">Has Active Issues</option>
                       <option value="Normal">Normal Only</option>
                       <option value="Offline">Offline Only</option>
                     </select>
@@ -546,8 +575,8 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
 
                       // Calculate telemetry metrics
                       const tele = db.getTelemetryForPlant(plant.id, 1)[0];
-                      const powerVal = tele ? (tele.pv_power || tele.power) : 0;
-                      const yieldVal = tele ? tele.daily_generation : 0;
+                      const powerVal = tele ? parseFloat(tele.pv_power || tele.power || 0) : 0;
+                      const yieldVal = tele ? parseFloat(tele.daily_generation || 0) : 0;
 
                       return (
                         <tr key={plant.id} className="hover:bg-slate-50">
@@ -612,7 +641,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
               </div>
 
               {/* Pagination controls */}
-              {totalPages > 1 && (
+              {false && totalPages > 1 && (
                 <div className="flex justify-end items-center space-x-2 text-xs">
                   <button
                     disabled={plantPage === 1}
@@ -642,38 +671,16 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                   <h3 className="text-base font-bold text-slate-855">Onboard Solar Station</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="block text-slate-650 font-semibold">Plant Name *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newPlantName}
-                      onChange={(e) => setNewPlantName(e.target.value)}
-                      placeholder="e.g. MY SPACE"
-                      className="w-full px-3 py-2 border border-slate-250 rounded focus:ring-1 focus:ring-[#1e3a8a] focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-slate-650 font-semibold">Capacity (kWp) *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newPlantCapacity}
-                      onChange={(e) => setNewPlantCapacity(e.target.value)}
-                      placeholder="e.g. 15.00 kWp"
-                      className="w-full px-3 py-2 border border-slate-250 rounded focus:ring-1 focus:ring-[#1e3a8a] focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="block text-slate-650 font-semibold">Location Address</label>
-                    <input
-                      type="text"
-                      value={newPlantLoc}
-                      onChange={(e) => setNewPlantLoc(e.target.value)}
-                      placeholder="Gaddiannaram, India"
-                      className="w-full px-3 py-2 border border-slate-250 rounded focus:outline-none"
-                    />
+                {/* Info Alert explaining Auto-Discovery */}
+                <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg flex items-start space-x-3">
+                  <Globe className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-xs">Automated SCADA Plant Discovery</h4>
+                    <p className="text-[11px] text-blue-700 font-medium mt-0.5">
+                      You do not need to manually configure plant names, locations, capacities, or coordinates.
+                      By selects your Website Provider and entering your credentials below, our scraper system will
+                      automatically discover and onboard all solar stations associated with your account.
+                    </p>
                   </div>
                 </div>
 
@@ -754,14 +761,18 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-[#1e3a8a] text-white rounded font-bold shadow-md hover:bg-[#172554]"
+                    disabled={isScraping}
+                    className="px-4 py-2 bg-[#1e3a8a] text-white rounded font-bold shadow-md hover:bg-[#172554] disabled:opacity-50 flex items-center space-x-2"
                   >
-                    Save Plant
+                    {isScraping && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{isScraping ? 'Onboarding & Scraping...' : 'Save Plant'}</span>
                   </button>
                 </div>
               </form>
             </div>
           )}
+        </div>
+      )}
 
           {/* EDIT PLANT PARAMETERS MODAL */}
           {isEditingPlant && detailPlant && (
@@ -822,9 +833,15 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
             </div>
           )}
 
-          {/* PLANT DETAILED PAGE */}
-          {selectedPlantId && !isEditingPlant && detailPlant && (
-            <div className="space-y-6">
+      {/* PLANT DETAILED PAGE */}
+      {selectedPlantId && !isEditingPlant && (
+        <div className="space-y-6">
+          {!detailPlant ? (
+            <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
+              <span>Loading plant data...</span>
+            </div>
+          ) : (
+            <>
 
               {/* Detailed Header */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -836,16 +853,17 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                   <span>Back to Registry</span>
                 </button>
                 <div className="flex items-center space-x-2 text-xs">
-                  <span className={`px-2.5 py-0.5 rounded-full font-bold ${detailPlant.status === 'Normal' || detailPlant.status === 'Online' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold ${detailPlant?.status === 'Normal' || detailPlant?.status === 'Online' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
                     }`}>
-                    {detailPlant.status}
+                    {detailPlant?.status}
                   </span>
                   <button
-                    onClick={() => triggerRefreshData(detailPlant.id)}
-                    className="px-2.5 py-1 bg-[#f0f7ff] text-[#1e3a8a] border border-[#bfd4f2] hover:bg-blue-100 font-bold rounded flex items-center space-x-1 shadow-sm"
+                    onClick={() => triggerRefreshData(detailPlant?.id)}
+                    disabled={isScraping}
+                    className="px-2.5 py-1 bg-[#f0f7ff] text-[#1e3a8a] border border-[#bfd4f2] hover:bg-blue-100 font-bold rounded flex items-center space-x-1 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Refresh Telemetry</span>
+                    <RefreshCw className={`w-3.5 h-3.5 ${isScraping ? 'animate-spin' : ''}`} />
+                    <span>{isScraping ? 'Scraping...' : 'Refresh Telemetry'}</span>
                   </button>
                 </div>
               </div>
@@ -854,7 +872,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white border border-slate-200 rounded p-4 shadow-sm space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Operational Capacity</span>
-                  <div className="text-xl font-bold font-mono text-slate-800">{detailPlant.plant_capacity}</div>
+                  <div className="text-xl font-bold font-mono text-slate-800">{detailPlant?.plant_capacity}</div>
                 </div>
                 <div className="bg-white border border-slate-200 rounded p-4 shadow-sm space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Website Provider</span>
@@ -862,7 +880,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                 </div>
                 <div className="bg-white border border-slate-200 rounded p-4 shadow-sm space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Commission Date</span>
-                  <div className="text-xl font-bold font-mono text-slate-750">{detailPlant.commission_date}</div>
+                  <div className="text-xl font-bold font-mono text-slate-750">{detailPlant?.commission_date}</div>
                 </div>
                 <div className="bg-white border border-slate-200 rounded p-4 shadow-sm space-y-1">
                   <span className="text-[10px] text-slate-400 font-bold uppercase">Gateway Controller ID</span>
@@ -899,7 +917,7 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                 <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
                   <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">Latest SCADA Telemetry</h3>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-medium">
-                    <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">PV Power (Current):</span> <strong className="font-mono text-base text-[#1e3a8a]">{(detailTelemetry ? (detailTelemetry.pv_power || detailTelemetry.power) : 0.00).toFixed(2)} kW</strong></p>
+                    <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">PV Power (Current):</span> <strong className="font-mono text-base text-[#1e3a8a]">{parseFloat(detailTelemetry ? (detailTelemetry.pv_power || detailTelemetry.power) : 0.00).toFixed(2)} kW</strong></p>
                     <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">Voltage:</span> <strong className="font-mono text-base text-slate-800">{detailTelemetry ? detailTelemetry.voltage : '0'} V</strong></p>
                     <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">Current:</span> <strong className="font-mono text-base text-slate-800">{detailTelemetry ? detailTelemetry.current : '0'} A</strong></p>
                     <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">Temperature:</span> <strong className="font-mono text-base text-amber-600">{detailTelemetry ? detailTelemetry.temperature : '0.0'} °C</strong></p>
@@ -1256,10 +1274,8 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                   </div>
                 </div>
               )}
-
-            </div>
+            </>
           )}
-
         </div>
       )}
 

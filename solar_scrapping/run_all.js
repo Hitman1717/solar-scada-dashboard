@@ -38,19 +38,6 @@ try {
 } catch (error) {
     console.error(`[❌] Error running irradiance post-processor:`, error.message);
 }
-
-console.log("\n=================================================");
-console.log("EXPORTING EXCEL DATA TO REACT APP...");
-console.log("=================================================");
-try {
-    execSync(`node export_to_json.js`, {
-        cwd: __dirname,
-        stdio: 'inherit'
-    });
-} catch (error) {
-    console.error(`[❌] Error running JSON exporter:`, error.message);
-}
-
 console.log("\n=================================================");
 console.log("ALL SCRAPERS COMPLETED!");
 console.log("=================================================");

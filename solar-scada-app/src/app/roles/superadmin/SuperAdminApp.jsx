@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { db } from '../../../services/dbService';
 import { Plus, Trash2, Edit3, ShieldAlert, CheckCircle, Database, Search, RefreshCw, User, Eye, EyeOff } from 'lucide-react';
+import CompanyVariablesView from '../../../components/dashboard/CompanyVariablesView';
 
 export default function SuperAdminApp({ currentUser, currentTab }) {
   // DB States
@@ -39,33 +40,11 @@ export default function SuperAdminApp({ currentUser, currentTab }) {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   
-  // Dynamic initial plant configurations list
-  const [onboardPlants, setOnboardPlants] = useState([
-    { name: 'Primary 1MW Field', capacity: '1000 kW' }
-  ]);
-
   // Profile fields
   const [profName, setProfName] = useState(currentUser.name);
   const [profEmail, setProfEmail] = useState(currentUser.email);
   const [currPass, setCurrPass] = useState('');
   const [newPass, setNewPass] = useState('');
-
-  // Add/Remove Plant blocks on onboarding
-  const addPlantBlock = () => {
-    setOnboardPlants([...onboardPlants, { name: '', capacity: '' }]);
-  };
-
-  const removePlantBlock = (index) => {
-    const updated = [...onboardPlants];
-    updated.splice(index, 1);
-    setOnboardPlants(updated);
-  };
-
-  const handlePlantFieldChange = (index, field, value) => {
-    const updated = [...onboardPlants];
-    updated[index][field] = value;
-    setOnboardPlants(updated);
-  };
 
   // Submit Onboarding company
   const handleOnboardSubmit = (e) => {
@@ -114,49 +93,7 @@ export default function SuperAdminApp({ currentUser, currentTab }) {
           is_active: true
         });
 
-        // Create initial plants
-        onboardPlants.forEach(plantInfo => {
-          if (plantInfo.name) {
-            const newPlant = db.insert(db.TABLES.PLANTS, {
-              company_id: newCompany.id,
-              plant_name: plantInfo.name,
-              plant_capacity: plantInfo.capacity || '1000 kW',
-              location: compAddr || 'Unknown',
-              status: 'Online',
-              commission_date: new Date().toISOString().split('T')[0]
-            });
 
-            // Map admin to plant
-            db.assignPlantToUser(newAdmin.id, newPlant.id);
-
-            // Add standard table records
-            for (let i = 1; i <= 3; i++) {
-              db.insert(db.TABLES.PLANT_TABLES, {
-                plant_id: newPlant.id,
-                table_number: `T-0${i}`,
-                panels_count: 16,
-                panel_model: 'MSL-350W',
-                inverter_model: 'Growatt 3000TL',
-                gateway_id: 'GW-01',
-                mac_address: `00:1A:2B:3C:4D:0${i}`,
-                degrade_pct: 2,
-                age_years: 1,
-                power_w: 4800
-              });
-            }
-          }
-        });
-
-        // Setup mock website provider credential
-        db.insert(db.TABLES.WEBSITE_ACCOUNTS, {
-          plant_id: newCompany.id,
-          provider_id: 1, // SolarEdge
-          username: adminEmail,
-          password: adminPassword,
-          scrape_interval_minutes: 10,
-          enabled: true,
-          last_scraped_at: new Date().toISOString()
-        });
 
         db.logAudit(currentUser.id, `Onboarded company ${compName}`, 'Company', newCompany.id);
 
@@ -541,61 +478,7 @@ export default function SuperAdminApp({ currentUser, currentTab }) {
                 </div>
               </div>
 
-              {/* Initial Plants */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Register Initial Plants</h3>
-                  <button
-                    type="button"
-                    onClick={addPlantBlock}
-                    className="px-2 py-1 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded font-semibold border border-slate-350 shadow-sm flex items-center space-x-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Add Plant</span>
-                  </button>
-                </div>
 
-                <div className="space-y-3 text-xs">
-                  {onboardPlants.map((plant, idx) => (
-                    <div key={idx} className="flex items-center space-x-3 bg-slate-50 border border-slate-250 p-3.5 rounded-lg">
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase">Plant Name</label>
-                          <input
-                            type="text"
-                            required
-                            value={plant.name}
-                            onChange={(e) => handlePlantFieldChange(idx, 'name', e.target.value)}
-                            placeholder="e.g. Pune Field 1"
-                            className="w-full px-2.5 py-1.5 border border-slate-250 bg-white rounded"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase">Capacity</label>
-                          <input
-                            type="text"
-                            required
-                            value={plant.capacity}
-                            onChange={(e) => handlePlantFieldChange(idx, 'capacity', e.target.value)}
-                            placeholder="e.g. 1000 kW"
-                            className="w-full px-2.5 py-1.5 border border-slate-250 bg-white rounded"
-                          />
-                        </div>
-                      </div>
-                      
-                      {onboardPlants.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removePlantBlock(idx)}
-                          className="text-red-655 hover:text-red-800 p-1.5 mt-4"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               {/* Actions */}
               <div className="border-t border-slate-100 pt-4 flex justify-end space-x-3 text-xs">
@@ -807,6 +690,9 @@ export default function SuperAdminApp({ currentUser, currentTab }) {
             </form>
           </div>
         </div>
+      )}
+      {currentTab === 'variables' && (
+        <CompanyVariablesView currentUser={currentUser} />
       )}
 
     </div>

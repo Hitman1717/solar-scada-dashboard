@@ -23,10 +23,8 @@ export default function TopBanner({
   ).length;
 
   // Real-time telemetry calculations
-  const livePowerKW = activePlantTelemetry ? activePlantTelemetry.power : 0;
-  const todayYieldKWh = activePlantTelemetry 
-    ? activePlantTelemetry.daily_generation 
-    : 0;
+  const livePowerKW = activePlantTelemetry ? parseFloat(activePlantTelemetry.power || 0) : 0;
+  const todayYieldKWh = activePlantTelemetry ? parseFloat(activePlantTelemetry.daily_generation || 0) : 0;
 
   const isPlantOnline = activePlantTelemetry ? activePlantTelemetry.status === 'Normal' || activePlantTelemetry.status === 'Online' : false;
 

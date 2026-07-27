@@ -14,40 +14,38 @@ export default function RoleSelector({ onLoginSuccess }) {
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const handleBypassOrValidate = (e) => {
+  const handleBypassOrValidate = async (e) => {
     e.preventDefault();
     const newErrors = {};
+    setErrors({});
 
     const isBypass = company.toLowerCase() === 'msl' || email.toLowerCase() === 'msl';
 
     if (isBypass) {
-      // Route to Super Admin
-      const superAdminUser = db.getAll(db.TABLES.USERS).find(u => u.role === 'SUPER_ADMIN') || {
-        id: 4,
-        name: 'Super Admin',
-        email: 'superadmin@msl.com',
-        role: 'SUPER_ADMIN',
-        company_id: null
-      };
-      
-      db.logAudit(superAdminUser.id, 'User Logged In (Bypass)', 'User', superAdminUser.id);
-      onLoginSuccess(superAdminUser);
+      const result = await db.bypassLogin(null, 'SUPER_ADMIN');
+      if (result.success) {
+        onLoginSuccess({
+          ...result.user,
+          token: result.token
+        });
+      } else {
+        setErrors({ general: result.error || 'Failed to authenticate bypass login.' });
+      }
       return;
     }
 
     // Role selection bypass - if a role is selected from the dropdown, bypass credentials and log in directly
     if (role && role !== 'Select category') {
-      const matchedUser = db.getAll(db.TABLES.USERS).find(u => u.role === role);
-      if (matchedUser) {
-        if (!matchedUser.is_active) {
-          setErrors({ general: 'This user account is suspended or inactive.' });
-          return;
-        }
-        db.update(db.TABLES.USERS, matchedUser.id, { last_login: new Date().toISOString() });
-        db.logAudit(matchedUser.id, 'User Logged In (Role Bypass)', 'User', matchedUser.id);
-        onLoginSuccess(matchedUser);
-        return;
+      const result = await db.bypassLogin(null, role);
+      if (result.success) {
+        onLoginSuccess({
+          ...result.user,
+          token: result.token
+        });
+      } else {
+        setErrors({ general: result.error || 'Failed to authenticate role bypass.' });
       }
+      return;
     }
 
     // Standard Validation
@@ -69,26 +67,15 @@ export default function RoleSelector({ onLoginSuccess }) {
       return;
     }
 
-    // Attempt database authentication
-    const users = db.getAll(db.TABLES.USERS);
-    const matchedUser = users.find(u => 
-      u.email.toLowerCase() === email.toLowerCase() && 
-      u.password === password &&
-      u.role === role
-    );
-
-    if (matchedUser) {
-      if (!matchedUser.is_active) {
-        setErrors({ general: 'This user account is suspended or inactive.' });
-        return;
-      }
-      
-      // Update last login
-      db.update(db.TABLES.USERS, matchedUser.id, { last_login: new Date().toISOString() });
-      db.logAudit(matchedUser.id, 'User Logged In', 'User', matchedUser.id);
-      onLoginSuccess(matchedUser);
+    // Attempt secure server authentication
+    const result = await db.login(email, password, role);
+    if (result.success) {
+      onLoginSuccess({
+        ...result.user,
+        token: result.token
+      });
     } else {
-      setErrors({ general: 'Invalid credentials. User not found with specified role.' });
+      setErrors({ general: result.error || 'Invalid credentials or connection issue.' });
     }
   };
 
@@ -263,7 +250,7 @@ export default function RoleSelector({ onLoginSuccess }) {
 
       {/* Copyright Footer */}
       <div className="text-slate-400 text-xs select-none">
-        &copy; 2025 Microsyslogic. All rights reserved.
+        &copy; 2026 Microsyslogic. All rights reserved.
       </div>
     </div>
   );

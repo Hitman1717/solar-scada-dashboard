@@ -1,11 +1,11 @@
 const puppeteer = require('puppeteer');
-const XLSX = require('xlsx');
+// const XLSX = require('xlsx');
 const fs = require('fs');
 const path = require('path');
 
 // Configuration
 const LOGIN_URL = "https://www.solaxcloud.com/user-center/";
-const EXCEL_FILE = path.resolve(__dirname, "..", "solar_data.xlsx");
+const JSON_FILE = path.resolve(__dirname, "..", "solar_data.json");
 const CREDENTIALS_FILE = path.resolve(__dirname, "..", "credentials.json");
 
 let USERNAME = "oaksun";
@@ -278,19 +278,17 @@ async function scrapePlantDetails(page) {
     });
 }
 
-function saveToExcel(newRows) {
-    console.log(`Saving data to Excel file: ${EXCEL_FILE}`);
+function saveToJson(newRows) {
+    console.log(`Saving data to JSON file: ${JSON_FILE}`);
     let existingRows = [];
+    let plantsData = [];
 
-    if (fs.existsSync(EXCEL_FILE)) {
+    if (fs.existsSync(JSON_FILE)) {
         try {
-            const workbook = XLSX.readFile(EXCEL_FILE);
-            if (workbook.SheetNames.includes('Telemetry')) {
-                const worksheet = workbook.Sheets['Telemetry'];
-                existingRows = XLSX.utils.sheet_to_json(worksheet);
-            }
+            const fileData = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
+            existingRows = fileData.telemetry || [];
         } catch (e) {
-            console.error(`Warning: Could not read existing Telemetry sheet (${e.message}).`);
+            console.error(`Warning: Could not read existing Telemetry from JSON (${e.message}).`);
         }
     }
 
@@ -334,33 +332,25 @@ function saveToExcel(newRows) {
         return row;
     });
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(finalRows);
-    XLSX.utils.book_append_sheet(wb, ws, 'Telemetry');
+    const scrapedPlantIds = new Set(finalRows.map(r => r.plant_id));
+    plantsData = Object.entries(PLANT_MAPPING)
+        .map(([name, id]) => ({
+            id: id,
+            plant_name: name.toUpperCase()
+        }))
+        .filter(p => scrapedPlantIds.has(p.id))
+        .sort((a, b) => a.id - b.id);
 
-    const plantsData = Object.entries(PLANT_MAPPING).map(([name, id]) => ({
-        id: id,
-        plant_name: name.toUpperCase()
-    })).sort((a, b) => a.id - b.id);
-    const wsPlants = XLSX.utils.json_to_sheet(plantsData);
-    XLSX.utils.book_append_sheet(wb, wsPlants, 'Plants');
+    const exportData = {
+        plants: plantsData,
+        telemetry: finalRows
+    };
 
     try {
-        XLSX.writeFile(wb, EXCEL_FILE);
+        fs.writeFileSync(JSON_FILE, JSON.stringify(exportData, null, 2), 'utf8');
         console.log(`\nSUCCESS! Telemetry updated. Total ${finalRows.length} rows written.`);
     } catch (e) {
-        if (e.code === 'EBUSY' || e.message.includes('permission')) {
-            const dir = path.dirname(EXCEL_FILE);
-            const backup = path.join(dir, `solar_data_backup_${Math.floor(Date.now() / 1000)}.xlsx`);
-            console.log(`\nERROR: Permission denied writing to '${EXCEL_FILE}'. Saving to backup '${backup}' instead.`);
-            try {
-                XLSX.writeFile(wb, backup);
-            } catch (backupErr) {
-                console.error("Failed to write backup Excel file:", backupErr.message);
-            }
-        } else {
-            console.error("Failed to write Excel file:", e.message);
-        }
+        console.error(`Could not write JSON file:`, e);
     }
 }
 
@@ -481,9 +471,9 @@ async function main() {
             allRows.push(rowData);
         }
 
-        // 5. Export compiled dataset to Excel
+        // 5. Export compiled dataset to JSON
         if (allRows.length > 0) {
-            saveToExcel(allRows);
+            saveToJson(allRows);
         }
 
     } catch (e) {

@@ -55,6 +55,7 @@ export default function Sidebar({
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'companies', label: 'Companies', icon: Building2 },
           { id: 'onboard', label: 'Onboard Company', icon: Shield },
+          { id: 'variables', label: 'Company Variables', icon: Sliders },
           { id: 'profile', label: 'Profile', icon: UserCircle }
         ];
       case 'ADMIN':

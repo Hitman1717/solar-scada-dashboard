@@ -1,6 +1,6 @@
 // ManagementApp.jsx - Management Dashboard (Aligned with Excel seed data, Dashboard Plants Table, Read-Only)
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../../services/dbService';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -12,9 +12,16 @@ import DashboardOverview from '../../../components/dashboard/DashboardOverview';
 
 export default function ManagementApp({ currentUser, currentTab, activePlant, setActivePlant, activePlantTelemetry }) {
   // DB States
-  const [plants] = useState(() => db.getPlantsForUser(currentUser.id, currentUser.role));
-  const [issues] = useState(() => db.getAll(db.TABLES.PLANT_ISSUES));
-  const [tablesList] = useState(() => db.getAll(db.TABLES.PLANT_TABLES));
+  const [plants, setPlants] = useState(() => db.getPlantsForUser(currentUser.id, currentUser.role));
+  const [issues, setIssues] = useState(() => db.getAll(db.TABLES.PLANT_ISSUES));
+  const [tablesList, setTablesList] = useState(() => db.getAll(db.TABLES.PLANT_TABLES));
+
+  // Sync state with database whenever telemetry updates
+  useEffect(() => {
+    setPlants(db.getPlantsForUser(currentUser.id, currentUser.role));
+    setIssues(db.getAll(db.TABLES.PLANT_ISSUES));
+    setTablesList(db.getAll(db.TABLES.PLANT_TABLES));
+  }, [activePlantTelemetry, currentUser]);
 
   // Detail navigation states
   const [selectedPlantId, setSelectedPlantId] = useState(null);
@@ -157,12 +164,11 @@ export default function ManagementApp({ currentUser, currentTab, activePlant, se
       )}
 
       {/* 2. PLANTS VIEW */}
-      {currentTab === 'plants' && (
+      {currentTab === 'plants' && !selectedPlantId && (
         <div className="space-y-6">
           
           {/* ASSIGNED PLANTS LIST VIEW */}
-          {!selectedPlantId && (
-            <div className="space-y-4">
+          <div className="space-y-4 font-sans">
               <div className="border-b border-slate-200 pb-3 flex justify-between items-center">
                 <h2 className="text-xl font-bold text-slate-800">Assigned Stations</h2>
               </div>
@@ -224,10 +230,11 @@ export default function ManagementApp({ currentUser, currentTab, activePlant, se
                 </table>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* ASSIGNED PLANT READ-ONLY DETAILS VIEW */}
-          {selectedPlantId && detailPlant && (
+        {/* ASSIGNED PLANT READ-ONLY DETAILS VIEW */}
+        {selectedPlantId && detailPlant && (
             <div className="space-y-6 animate-in fade-in duration-200">
               
               {/* Detailed Header */}
@@ -291,7 +298,7 @@ export default function ManagementApp({ currentUser, currentTab, activePlant, se
                 <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
                   <h3 className="font-bold text-sm text-slate-800 border-b border-slate-100 pb-2">Latest SCADA Parameters</h3>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-medium">
-                    <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">PV Power (Current):</span> <strong className="font-mono text-base text-[#1e3a8a]">{activePlantTelemetry ? (activePlantTelemetry.pv_power || activePlantTelemetry.power).toFixed(2) : '0.00'} kW</strong></p>
+                    <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">PV Power (Current):</span> <strong className="font-mono text-base text-[#1e3a8a]">{activePlantTelemetry ? parseFloat(activePlantTelemetry.pv_power || activePlantTelemetry.power || 0).toFixed(2) : '0.00'} kW</strong></p>
                     <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">Voltage:</span> <strong className="font-mono text-base text-slate-800">{activePlantTelemetry ? activePlantTelemetry.voltage : '0'} V</strong></p>
                     <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">Current:</span> <strong className="font-mono text-base text-slate-800">{activePlantTelemetry ? activePlantTelemetry.current : '0'} A</strong></p>
                     <p className="flex flex-col p-3 bg-slate-50 border border-slate-200 rounded"><span className="text-slate-400">Temperature:</span> <strong className="font-mono text-base text-amber-600">{activePlantTelemetry ? activePlantTelemetry.temperature : '0.0'} °C</strong></p>
@@ -461,9 +468,6 @@ export default function ManagementApp({ currentUser, currentTab, activePlant, se
 
             </div>
           )}
-
-        </div>
-      )}
 
       {/* 3. PROFILE TAB */}
       {currentTab === 'profile' && (

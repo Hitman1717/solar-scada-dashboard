@@ -1,20 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Resolve XLSX from one of the node_modules to avoid installing it at root
-const xlsxPath = path.resolve(__dirname, 'polycab', 'node_modules', 'xlsx');
-let XLSX;
-try {
-    XLSX = require(xlsxPath);
-} catch (e) {
-    try {
-        XLSX = require(path.resolve(__dirname, 'solax', 'node_modules', 'xlsx'));
-    } catch (err) {
-        XLSX = require(path.resolve(__dirname, 'solis', 'node_modules', 'xlsx'));
-    }
-}
-
-const EXCEL_FILE = path.resolve(__dirname, 'solar_data.xlsx');
+const JSON_FILE = path.resolve(__dirname, 'solar_data.json');
 
 const PLANT_COORDINATES = {
     1: { lat: 17.4065, lng: 78.4772 },  // MY SPACE STUDY HALL 1
@@ -61,26 +48,20 @@ async function main() {
     console.log("POST-PROCESSING: UPDATING IRRADIANCE VALUES...");
     console.log("=================================================");
 
-    if (!fs.existsSync(EXCEL_FILE)) {
-        console.error(`Error: Excel file '${EXCEL_FILE}' not found!`);
+    if (!fs.existsSync(JSON_FILE)) {
+        console.error(`Error: JSON file '${JSON_FILE}' not found!`);
         return;
     }
 
-    let workbook;
+    let fileData;
     try {
-        workbook = XLSX.readFile(EXCEL_FILE);
+        fileData = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
     } catch (e) {
-        console.error("Error reading Excel file:", e.message);
+        console.error("Error reading JSON file:", e.message);
         return;
     }
 
-    if (!workbook.SheetNames.includes('Telemetry')) {
-        console.error("Error: Telemetry sheet not found in the Excel file!");
-        return;
-    }
-
-    const sheet = workbook.Sheets['Telemetry'];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    const rows = fileData.telemetry || [];
 
     // Find rows that lack irradiance data
     const emptyRows = rows.filter(r => r.irradiance === undefined || r.irradiance === null || r.irradiance === "");
@@ -130,8 +111,6 @@ async function main() {
     if (updatedCount > 0) {
         console.log(`\nSuccessfully fetched irradiance for ${updatedCount} rows.`);
 
-        const newWb = XLSX.utils.book_new();
-        
         const colsOrder = ["id", "plant_id", "timestamp", "power", "voltage", "current", "frequency", 
                           "irradiance", "daily_generation", "total_generation", "temperature", "status", "raw_json", "created_at"];
         
@@ -143,33 +122,13 @@ async function main() {
             return row;
         });
 
-        const newWs = XLSX.utils.json_to_sheet(finalRows);
-        XLSX.utils.book_append_sheet(newWb, newWs, 'Telemetry');
-
-        for (const name of workbook.SheetNames) {
-            if (name !== 'Telemetry') {
-                XLSX.utils.book_append_sheet(newWb, workbook.Sheets[name], name);
-            }
-        }
+        fileData.telemetry = finalRows;
 
         try {
-            XLSX.writeFile(newWb, EXCEL_FILE);
-            console.log(`SUCCESS! Excel file updated with new irradiance values.`);
+            fs.writeFileSync(JSON_FILE, JSON.stringify(fileData, null, 2), 'utf8');
+            console.log(`SUCCESS! JSON file updated with new irradiance values.`);
         } catch (e) {
-            console.error("Error writing Excel file:", e.message);
-            if (e.code === 'EBUSY' || e.message.includes('permission')) {
-                const dir = path.dirname(EXCEL_FILE);
-                const backup = path.join(dir, `solar_data_irradiance_backup_${Math.floor(Date.now() / 1000)}.xlsx`);
-                console.log(`\nERROR: Permission denied writing to '${EXCEL_FILE}'.`);
-                console.log(`Is the Excel file open in another program (like Microsoft Excel)?`);
-                console.log(`Saving data to backup file '${backup}' instead to protect your fetched radiation data.`);
-                try {
-                    XLSX.writeFile(newWb, backup);
-                    console.log(`Backup saved to ${backup}`);
-                } catch (backupErr) {
-                    console.error("Failed to write backup Excel file:", backupErr.message);
-                }
-            }
+            console.error("Error writing JSON file:", e.message);
         }
     } else {
         console.log("\nNo irradiance values could be updated.");

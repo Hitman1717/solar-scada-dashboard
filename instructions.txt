@@ -1,0 +1,103 @@
+================================================================================
+SOLAR SCADA DASHBOARD - ARCHITECTURE & RUNNING INSTRUCTIONS
+================================================================================
+
+This document outlines the architecture, setup instructions, and testing workflows
+for the Solar SCADA Dashboard application and Puppeteer web scrapers.
+
+--------------------------------------------------------------------------------
+1. PROJECT DIRECTORY STRUCTURE
+--------------------------------------------------------------------------------
+Solar_dashboard/
+├── solar-scada-app/            # Main React + Vite Frontend
+│   └── src/
+│       ├── services/
+│       │   ├── dbService.js     # JWT REST Client & Offline cache manager
+│       │   └── excel_data.json  # Scraped JSON telemetry parsed from XLSX
+│       └── app/roles/
+│           ├── admin/AdminApp.jsx
+│           └── management/ManagementApp.jsx
+│
+├── backend/                     # Node.js + Express API Backend Server
+│   ├── server.js               # Entry point (handles API routes & node-cron)
+│   └── src/
+│       ├── config/db.js        # Supabase PostgreSQL Pool Connection
+│       ├── services/
+│       │   └── scraperRunner.js # Launches Puppeteer JS scrapers & syncs DB
+│       ├── controllers/
+│       │   └── scrapeController.js
+│       └── routes/
+│           └── api.js          # API endpoints
+│
+└── solar_scrapping/            # Standalone Puppeteer Scraper Module
+    ├── credentials.json        # Dynamic credentials config file (updated by backend)
+    ├── export_to_json.js       # Excel-to-JSON parser
+    ├── run_all.js              # Runs all scrapers sequentially
+    ├── solar_data.xlsx         # Master Excel sheet written to by scrapers
+    ├── polycab/
+    ├── solax/
+    └── solis/
+
+
+--------------------------------------------------------------------------------
+2. HOW TO RUN THE APPLICATION
+--------------------------------------------------------------------------------
+
+A. START THE BACKEND SERVER:
+   1. Open a new terminal.
+   2. Navigate to the backend folder:
+      cd solar-scada-app/backend
+   3. Run the development server (runs nodemon on port 5000):
+      npm run dev
+   * Ensure it outputs: "Database connected successfully to PostgreSQL"
+
+B. START THE FRONTEND APP:
+   1. Open a second terminal.
+   2. Navigate to the frontend app folder:
+      cd solar-scada-app
+   3. Run the Vite development server (runs on port 5173):
+      npm run dev
+   4. Open your browser and navigate to: http://localhost:5173/
+
+
+--------------------------------------------------------------------------------
+3. HOW TO TEST THE SCRAPING PROCESS
+--------------------------------------------------------------------------------
+
+Option 1: Manual Trigger via Admin UI (Recommended)
+   1. Log in to the application as an ADMIN (e.g. email: "admin@msl.com", password: "password").
+   2. Go to the "Plants" tab.
+   3. Select a registered plant (e.g. "MY SPACE STUDY HALL 1" which uses Solax).
+   4. Under "Scraping Credentials", check the configured username or click "Edit Credentials" to save new credentials to PostgreSQL.
+   5. Click the "Refresh Telemetry" button in the plant header.
+   6. The button will spin and show "Scraping...".
+   7. In the backend terminal, you will see logs showing the Puppeteer script launching, updating credentials.json, scraping the inverter data, updating the Excel sheet, parsing it to JSON, and syncing the new rows to PostgreSQL.
+   8. Once done, you will receive an alert popup, and the UI telemetry graphs and tables will reload dynamically.
+
+Option 2: Automatic Background Cron Job
+   * The backend server has an integrated `node-cron` scheduler running.
+   * Every 15 minutes, it automatically queries all active, enabled scraping credentials in PostgreSQL, triggers the respective Puppeteer scrapers, exports the Excel data, and syncs newly found telemetry timestamps into the database.
+   * You can monitor this running automatically in the backend server console.
+
+
+--------------------------------------------------------------------------------
+4. KEY IMPLEMENTATIONS AND SAFEGUARDS
+--------------------------------------------------------------------------------
+* Type-Safe Calculations: Wrapped all telemetry `.toFixed(2)` formatters inside
+  parseFloat() casts to handle PostgreSQL decimal numbers returned as strings.
+* Type-Safe Filters: Converted all ID and Company comparisons (e.g. p.company_id == user.company_id)
+  to force numeric checks (Number(p.id) === Number(selectedPlantId)) to prevent
+  blank pages caused by strict type mismatches.
+* Onboarding Forms: Simplified onboarding in SuperAdminApp.jsx to make initial
+  plant configurations optional.
+* Company Variables Security: Hidden and unmounted the "Company Variables" tab for
+  all standard ADMIN users (Super Admin exclusive).
+* Global details view: Decoupled the plant details view from nested tab conditionals
+  in both AdminApp.jsx and ManagementApp.jsx. Clicking "View" from either Dashboard
+  or Plants tab now opens the details view overlay globally, and clicking "Back" returns
+  the user to their previous tab with no blank screens.
+* Registry Single Page Listing: Removed registry pagination so all 16 stations are
+  rendered together on a single page in the Plants tab.
+* Has Active Issues Filter: Added a status option "Has Active Issues" to filter
+  stations and quickly identify which ones have active warnings or faults.
+================================================================================
