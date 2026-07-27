@@ -68,7 +68,7 @@ export default function RoleSelector({ onLoginSuccess }) {
     }
 
     // Attempt secure server authentication
-    const result = await db.login(email, password, role);
+    const result = await db.login(company, email, password, role);
     if (result.success) {
       onLoginSuccess({
         ...result.user,

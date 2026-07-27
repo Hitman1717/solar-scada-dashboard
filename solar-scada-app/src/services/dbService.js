@@ -35,13 +35,13 @@ let cache = {
 // Initial Seed Data (Excel data based, Polycab/Solis/Solax providers)
 const INITIAL_DATA = {
   [TABLES.COMPANIES]: [
-    { id: 1, company_name: 'Microsyslogic', address: '123 Tech Park, Chennai', contact_person: 'Admin Rohit', contact_email: 'admin@msl.com', contact_phone: '+91 98765 43210', status: 'Active', created_at: '2025-01-10T10:00:00Z', updated_at: '2025-01-10T10:00:00Z' },
-    { id: 2, company_name: 'Oaksun Energy', address: 'Gaddiannaram Road, Hyderabad', contact_person: 'Omkar Oak', contact_email: 'omkar@oaksun.com', contact_phone: '+91 98765 11111', status: 'Active', created_at: '2025-02-15T11:30:00Z', updated_at: '2025-02-15T11:30:00Z' }
+    { id: 1, company_name: 'msl', address: '123 Tech Park, Chennai', contact_person: 'Super Admin', contact_email: 'superadmin@msl.com', contact_phone: '+91 98765 43210', status: 'Active', created_at: '2025-01-10T10:00:00Z', updated_at: '2025-01-10T10:00:00Z' },
+    { id: 2, company_name: 'test', address: 'Gaddiannaram Road, Hyderabad', contact_person: 'Test Admin', contact_email: 'admin@test.com', contact_phone: '+91 98765 11111', status: 'Active', created_at: '2025-02-15T11:30:00Z', updated_at: '2025-02-15T11:30:00Z' }
   ],
   [TABLES.USERS]: [
-    { id: 1, company_id: 1, name: 'Rohit Admin', email: 'admin@msl.com', password: 'password', role: 'ADMIN', is_active: true, last_login: '2026-07-06T21:10:00Z', created_at: '2025-01-10T10:05:00Z', updated_at: '2025-01-10T10:05:00Z' },
-    { id: 2, company_id: 1, name: 'Manager Ramesh', email: 'mgmt@msl.com', password: 'password', role: 'MANAGEMENT', is_active: true, last_login: '2026-07-06T21:05:00Z', created_at: '2025-01-12T09:15:00Z', updated_at: '2025-01-12T09:15:00Z' },
-    { id: 4, company_id: null, name: 'Super Admin', email: 'superadmin@msl.com', password: 'password', role: 'SUPER_ADMIN', is_active: true, last_login: '2026-07-06T20:50:00Z', created_at: '2025-01-01T09:00:00Z', updated_at: '2025-01-01T09:00:00Z' }
+    { id: 1, company_id: 2, name: 'Test Admin', email: 'admin@test.com', password: 'password', role: 'ADMIN', is_active: true, last_login: '2026-07-06T21:10:00Z', created_at: '2025-01-10T10:05:00Z', updated_at: '2025-01-10T10:05:00Z' },
+    { id: 2, company_id: 2, name: 'Test Management', email: 'mgmt@test.com', password: 'password', role: 'MANAGEMENT', is_active: true, last_login: '2026-07-06T21:05:00Z', created_at: '2025-01-12T09:15:00Z', updated_at: '2025-01-12T09:15:00Z' },
+    { id: 4, company_id: 1, name: 'Super Admin', email: 'superadmin@msl.com', password: 'password', role: 'SUPER_ADMIN', is_active: true, last_login: '2026-07-06T20:50:00Z', created_at: '2025-01-01T09:00:00Z', updated_at: '2025-01-01T09:00:00Z' }
   ],
   [TABLES.PLANTS]: [],
   [TABLES.PLANT_USERS]: [],
@@ -116,7 +116,7 @@ function loadLocalStorageFallback() {
 
   const needsReinit = localTelemetry.length !== excelTelemetry.length || 
                       localPlants.length !== excelPlants.length ||
-                      !localStorage.getItem(DB_KEY_PREFIX + 'initialized_excel_v1');
+                      !localStorage.getItem(DB_KEY_PREFIX + 'initialized_excel_v3'); // Increment version to force re-init
 
   if (needsReinit) {
     localStorage.clear();
@@ -127,8 +127,26 @@ function loadLocalStorageFallback() {
       }
     });
 
-    writeTable(TABLES.PLANTS, excelPlants);
-    writeTable(TABLES.TELEMETRY, excelTelemetry);
+    // Make all seeded plants belong to company ID 2 ('test') and distribute statuses matching the dashboard breakdown
+    const mappedPlants = excelPlants.map((p, index) => {
+      let status = 'Normal';
+      if (index % 4 === 1) status = 'Offline';
+      else if (index % 4 === 2) status = 'Under Maintenance';
+      else if (index % 4 === 3) status = 'Decommissioned';
+      return { ...p, company_id: 2, status };
+    });
+    writeTable(TABLES.PLANTS, mappedPlants);
+
+    // Adjust telemetry timestamps from 2026-07-16/17 to 2026-07-26/27 (+10 days)
+    const adjustedTelemetry = excelTelemetry.map(t => {
+      const origDate = new Date(t.timestamp);
+      const newDate = new Date(origDate.getTime() + 10 * 24 * 60 * 60 * 1000);
+      return {
+        ...t,
+        timestamp: newDate.toISOString().replace('T', ' ').substring(0, 19)
+      };
+    });
+    writeTable(TABLES.TELEMETRY, adjustedTelemetry);
 
     const plantUsers = [];
     excelPlants.forEach(p => {
@@ -139,11 +157,11 @@ function loadLocalStorageFallback() {
 
     const websiteAccounts = [];
     excelPlants.forEach(p => {
-      let providerId = 1;
-      if (p.id >= 5) {
-        providerId = 2;
+      let providerId = 2; // Solis default for id >= 5
+      if (p.id === 1 || p.id === 2) {
+        providerId = 3; // Solax (interchanged)
       } else if (p.id === 3 || p.id === 4) {
-        providerId = 3;
+        providerId = 1; // Polycab (interchanged)
       }
       
       websiteAccounts.push({
@@ -161,7 +179,7 @@ function loadLocalStorageFallback() {
     });
     writeTable(TABLES.WEBSITE_ACCOUNTS, websiteAccounts);
 
-    localStorage.setItem(DB_KEY_PREFIX + 'initialized_excel_v1', 'true');
+    localStorage.setItem(DB_KEY_PREFIX + 'initialized_excel_v3', 'true');
   }
 
   // Load from local storage into cache
@@ -170,39 +188,30 @@ function loadLocalStorageFallback() {
   });
   
   if (cache[TABLES.PLANTS].length === 0) {
-    cache[TABLES.PLANTS] = excelPlants;
+    cache[TABLES.PLANTS] = excelPlants.map((p, index) => {
+      let status = 'Normal';
+      if (index % 4 === 1) status = 'Offline';
+      else if (index % 4 === 2) status = 'Under Maintenance';
+      else if (index % 4 === 3) status = 'Decommissioned';
+      return { ...p, company_id: 2, status };
+    });
   }
   if (cache[TABLES.TELEMETRY].length === 0) {
-    cache[TABLES.TELEMETRY] = excelTelemetry;
+    const adjustedTelemetry = excelTelemetry.map(t => {
+      const origDate = new Date(t.timestamp);
+      const newDate = new Date(origDate.getTime() + 10 * 24 * 60 * 60 * 1000);
+      return {
+        ...t,
+        timestamp: newDate.toISOString().replace('T', ' ').substring(0, 19)
+      };
+    });
+    cache[TABLES.TELEMETRY] = adjustedTelemetry;
   }
 }
 
-// Initialize Database from Server
+// Initialize Database in Offline/Demo Mode Unconditionally
 export async function initializeDB() {
-  if (!authToken) {
-    console.log('No authentication token available. Starting in mock/fallback mode.');
-    loadLocalStorageFallback();
-    return false;
-  }
-
-  try {
-    const response = await fetchWithAuth('http://localhost:5000/api/db');
-    if (response.status === 401 || response.status === 403) {
-      console.warn('Session expired or unauthorized. Loading LocalStorage fallback...');
-      loadLocalStorageFallback();
-      return false;
-    }
-    const result = await response.json();
-    if (result.success && result.data) {
-      cache = result.data;
-      isUsingBackend = true;
-      console.log('Successfully initialized database cache from PostgreSQL backend.');
-      return true;
-    }
-  } catch (err) {
-    console.warn('Express backend not reachable, falling back to LocalStorage:', err);
-  }
-
+  console.log('Starting in offline/demo mode (Unconditional).');
   loadLocalStorageFallback();
   return false;
 }
@@ -339,69 +348,36 @@ export const db = {
     });
   },
 
-  // Secure Authentication API Operations
-  login: async (email, password, role) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
-      });
-      const result = await response.json();
-      if (result.success) {
-        authToken = result.token;
-        isUsingBackend = true;
-        // Fetch database dump immediately
-        await initializeDB();
-        return { success: true, token: result.token, user: result.user };
-      } else {
-        return { success: false, error: result.error };
-      }
-    } catch (err) {
-      console.error('Login request failed, fallback to LocalStorage:', err);
-      // Fallback local auth check
-      loadLocalStorageFallback();
-      const users = cache[TABLES.USERS];
-      const matched = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === role);
-      if (matched) {
+  // Secure Authentication API Operations (Offline/Demo Mode)
+  login: async (companyName, email, password, role) => {
+    loadLocalStorageFallback();
+    const users = cache[TABLES.USERS];
+    const matched = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === role);
+    if (matched) {
+      const companyObj = db.getById(TABLES.COMPANIES, matched.company_id);
+      if (companyObj && companyObj.company_name.toLowerCase() === companyName.toLowerCase()) {
         isUsingBackend = false;
         return { success: true, token: 'mock-local-token', user: matched };
+      } else {
+        return { success: false, error: `Company mismatch. User belongs to '${companyObj ? companyObj.company_name : 'no company'}'.` };
       }
-      return { success: false, error: 'Invalid credentials or authentication server is offline.' };
     }
+    return { success: false, error: 'Invalid credentials.' };
   },
 
   bypassLogin: async (email, role) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/auth/bypass', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role })
-      });
-      const result = await response.json();
-      if (result.success) {
-        authToken = result.token;
-        isUsingBackend = true;
-        await initializeDB();
-        return { success: true, token: result.token, user: result.user };
-      } else {
-        return { success: false, error: result.error };
-      }
-    } catch (err) {
-      console.error('Bypass login failed, fallback to LocalStorage:', err);
-      loadLocalStorageFallback();
-      let matched = null;
-      if (email) {
-        matched = cache[TABLES.USERS].find(u => u.email.toLowerCase() === email.toLowerCase());
-      } else if (role) {
-        matched = cache[TABLES.USERS].find(u => u.role === role);
-      }
-      if (matched) {
-        isUsingBackend = false;
-        return { success: true, token: 'mock-local-token', user: matched };
-      }
-      return { success: false, error: 'Bypass user not found.' };
+    loadLocalStorageFallback();
+    let matched = null;
+    if (email) {
+      matched = cache[TABLES.USERS].find(u => u.email.toLowerCase() === email.toLowerCase());
+    } else if (role) {
+      matched = cache[TABLES.USERS].find(u => u.role === role);
     }
+    if (matched) {
+      isUsingBackend = false;
+      return { success: true, token: 'mock-local-token', user: matched };
+    }
+    return { success: false, error: 'Bypass user not found.' };
   },
 
   setToken: (token) => {
@@ -493,7 +469,7 @@ export const db = {
       });
 
       newPlants.forEach(np => {
-        cache[TABLES.PLANTS].push(np);
+        cache[TABLES.PLANTS].push({ ...np, company_id: 2 });
       });
       writeTable(TABLES.PLANTS, cache[TABLES.PLANTS]);
 

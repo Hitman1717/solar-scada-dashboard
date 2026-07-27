@@ -466,8 +466,12 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                         <td className="p-3 font-mono text-[#1e3a8a]">{powerVal.toFixed(2)} kW</td>
                         <td className="p-3 font-mono text-[#d4af37] font-semibold">{yieldVal.toFixed(2)} kWh</td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${plant.status === 'Normal' || plant.status === 'Online' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
-                            }`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap border ${
+                            plant.status === 'Normal' || plant.status === 'Online' || plant.status === 'Active' ? 'bg-green-50 border-green-200 text-green-700' :
+                            plant.status === 'Offline' || plant.status === 'Inactive' ? 'bg-red-50 border-red-200 text-red-700' :
+                            plant.status === 'Under Maintenance' || plant.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                            'bg-slate-100 border-slate-300 text-slate-600' // Decommissioned/Fallback gray
+                          }`}>
                             {plant.status}
                           </span>
                         </td>
@@ -598,8 +602,12 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                           <td className="p-3 font-mono text-[#1e3a8a]">{powerVal.toFixed(2)} kW</td>
                           <td className="p-3 font-mono text-[#d4af37] font-semibold">{yieldVal.toFixed(2)} kWh</td>
                           <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${plant.status === 'Normal' || plant.status === 'Online' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
-                              }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap border ${
+                              plant.status === 'Normal' || plant.status === 'Online' || plant.status === 'Active' ? 'bg-green-50 border-green-200 text-green-700' :
+                              plant.status === 'Offline' || plant.status === 'Inactive' ? 'bg-red-50 border-red-200 text-red-700' :
+                              plant.status === 'Under Maintenance' || plant.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                              'bg-slate-100 border-slate-300 text-slate-600' // Decommissioned/Fallback gray
+                            }`}>
                               {plant.status}
                             </span>
                           </td>
@@ -853,8 +861,12 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                   <span>Back to Registry</span>
                 </button>
                 <div className="flex items-center space-x-2 text-xs">
-                  <span className={`px-2.5 py-0.5 rounded-full font-bold ${detailPlant?.status === 'Normal' || detailPlant?.status === 'Online' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-                    }`}>
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-xs whitespace-nowrap border ${
+                    detailPlant?.status === 'Normal' || detailPlant?.status === 'Online' || detailPlant?.status === 'Active' ? 'bg-green-50 border-green-200 text-green-700' :
+                    detailPlant?.status === 'Offline' || detailPlant?.status === 'Inactive' ? 'bg-red-50 border-red-200 text-red-700' :
+                    detailPlant?.status === 'Under Maintenance' || detailPlant?.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                    'bg-slate-100 border-slate-300 text-slate-600' // Decommissioned/Fallback gray
+                  }`}>
                     {detailPlant?.status}
                   </span>
                   <button
