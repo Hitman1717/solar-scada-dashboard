@@ -44,6 +44,17 @@ export const dbController = {
     try {
       const data = {};
       
+      // Multi-tenant access control setup
+      let allowedPlantIds = null;
+      let userCompanyId = req.user?.company_id ? Number(req.user.company_id) : null;
+      
+      if (req.user?.role !== 'SUPER_ADMIN') {
+        const userPlantUsers = await prisma.plant_users.findMany({
+          where: { user_id: Number(req.user.id) }
+        });
+        allowedPlantIds = userPlantUsers.map(pu => pu.plant_id);
+      }
+
       // Fetch each allowed table
       for (const table of ALLOWED_TABLES) {
         const hasIdColumn = !['plant_users'].includes(table);
@@ -52,7 +63,45 @@ export const dbController = {
                         table === 'plant_users' ? [{ user_id: 'asc' }, { plant_id: 'asc' }] :
                         (hasIdColumn ? { id: 'asc' } : undefined);
 
+        const where = {};
+        
+        if (allowedPlantIds !== null) {
+          // Limit standard user access to their assigned plants
+          if (['plants', 'plant_users', 'website_accounts', 'plant_tables', 'telemetry', 'plant_issues', 'company_variables'].includes(table)) {
+            where.plant_id = { in: allowedPlantIds };
+            if (table === 'plants') {
+              // 'plants' table primary key is 'id', not 'plant_id'
+              delete where.plant_id;
+              where.id = { in: allowedPlantIds };
+            }
+          } else if (table === 'companies') {
+            if (userCompanyId !== null) {
+              where.id = userCompanyId;
+            } else {
+              where.id = -1; // No company access
+            }
+          } else if (table === 'users') {
+            if (userCompanyId !== null) {
+              where.company_id = userCompanyId;
+            } else {
+              where.id = Number(req.user.id); // Only see self
+            }
+          } else if (table === 'audit_logs') {
+            if (userCompanyId !== null) {
+              const companyUsers = await prisma.users.findMany({
+                where: { company_id: userCompanyId },
+                select: { id: true }
+              });
+              const companyUserIds = companyUsers.map(u => u.id);
+              where.user_id = { in: companyUserIds };
+            } else {
+              where.user_id = Number(req.user.id);
+            }
+          }
+        }
+
         const rows = await prisma[table].findMany({
+          where,
           orderBy
         });
 

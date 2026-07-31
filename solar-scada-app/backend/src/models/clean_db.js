@@ -43,9 +43,9 @@ async function main() {
     console.log('Seeding predefined website providers...');
     await prisma.website_providers.createMany({
       data: [
-        { id: 1, provider_name: 'Polycab', login_url: 'https://polycab.com', description: 'Polycab monitoring API' },
-        { id: 2, provider_name: 'Solis', login_url: 'https://solisinverters.com', description: 'Solis Cloud API portal' },
-        { id: 3, provider_name: 'Solax', login_url: 'https://solaxcloud.com', description: 'Solax portal scraper' }
+        { id: 1, provider_name: 'Polycab', oem_key: 'polycab', login_url: 'https://polycab.com', description: 'Polycab monitoring API' },
+        { id: 2, provider_name: 'Solis', oem_key: 'solis', login_url: 'https://solisinverters.com', description: 'Solis Cloud API portal' },
+        { id: 3, provider_name: 'Solax', oem_key: 'solax', login_url: 'https://solaxcloud.com', description: 'Solax portal scraper' }
       ]
     });
 

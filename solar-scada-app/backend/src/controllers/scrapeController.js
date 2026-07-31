@@ -1,6 +1,6 @@
 // scrapeController.js - Handler to trigger scraper scripts and synchronize telemetry records
 import prisma from '../config/prisma.js';
-import { runScraper, syncTelemetryFromJson } from '../services/scraperRunner.js';
+import * as queues from '../services/queues.js';
 
 export const scrapeController = {
   triggerScrape: async (req, res) => {
@@ -26,25 +26,29 @@ export const scrapeController = {
         });
       }
 
-      const providerName = account.website_providers?.provider_name || 'Polycab';
+      const oemKey = account.website_providers?.oem_key || 'polycab';
 
-      // 2. Trigger the Puppeteer scraper script and wait for JSON export completion
-      await runScraper(providerName, account.username, account.password);
-
-      // 3. Sync the newly scraped telemetry data from solar_data.json to the telemetry table
-      const syncedCount = await syncTelemetryFromJson(plantId);
-
-      // 4. Update last_scraped_at
-      await prisma.website_accounts.update({
-        where: { id: account.id },
-        data: { last_scraped_at: new Date() }
+      // 2. Queue the job in the custom queue manager
+      console.log(`[Scrape Controller] Queueing manual scrape job for plant ${plantId} (OEM: ${oemKey})`);
+      const queue = queues.get(oemKey);
+      const job = await queue.add('scrape', {
+        accountId: account.id,
+        plantId: Number(plantId),
+        oemProviderId: account.provider_id
+      }, {
+        attempts: 1, // Only 1 attempt for manual trigger
+        removeOnComplete: true,
+        removeOnFail: 50
       });
+
+      // 3. Await the job completion (finished promise)
+      await job.finished;
 
       // Log audit
       await prisma.audit_logs.create({
         data: {
           user_id: req.user ? Number(req.user.id) : null,
-          action: `Manually scraped ${providerName} plant data`,
+          action: `Manually scraped ${oemKey} plant data`,
           entity_type: 'Plant',
           entity_id: Number(plantId)
         }
@@ -52,8 +56,7 @@ export const scrapeController = {
 
       res.json({
         success: true,
-        message: `Successfully executed scraper for ${providerName}.`,
-        syncedRecords: syncedCount
+        message: `Successfully executed scraper for ${oemKey}.`
       });
 
     } catch (err) {
@@ -80,29 +83,9 @@ export const scrapeController = {
         return res.status(404).json({ success: false, error: 'Website provider not found.' });
       }
 
-      // 2. Trigger scraper to discover plants and write to solar_data.json
-      await runScraper(provider.provider_name, username, password);
-
-      // 3. Sync and auto-discover plants (writes them to database)
       const companyId = req.user?.company_id || 1;
-      
-      // Pass a dummy plantId or null so syncTelemetryFromJson knows it's an auto-discovery sync
-      await syncTelemetryFromJson(null);
 
-      // 4. Find the newly registered plants under this company to link them
-      const dbPlants = await prisma.plants.findMany({
-        where: { company_id: Number(companyId) },
-        orderBy: { id: 'asc' }
-      });
-
-      if (dbPlants.length === 0) {
-        return res.status(400).json({
-          success: false,
-          error: 'Scraper executed, but no stations/plants were found under this account.'
-        });
-      }
-
-      // Link the website account to the first plant we found/created
+      // 2. Create a temporary website account record (disabled first, to prevent automatic polling)
       let account = await prisma.website_accounts.findFirst({
         where: {
           provider_id: Number(providerId),
@@ -113,16 +96,57 @@ export const scrapeController = {
       if (!account) {
         account = await prisma.website_accounts.create({
           data: {
-            plant_id: dbPlants[0].id,
             provider_id: Number(providerId),
             username: username,
             password: password,
             scrape_interval_minutes: Number(scrapeIntervalMinutes) || 5,
-            enabled: true,
-            last_scraped_at: new Date()
+            enabled: false // Disabled during onboarding/discovery
           }
         });
       }
+
+      // 3. Queue the onboarding scrape task
+      const oemKey = provider.oem_key || 'polycab';
+      console.log(`[Scrape Controller] Queueing onboarding discovery job for provider ${oemKey}`);
+      const queue = queues.get(oemKey);
+      const job = await queue.add('scrape', {
+        accountId: account.id,
+        oemProviderId: Number(providerId)
+      }, {
+        attempts: 1,
+        removeOnComplete: true,
+        removeOnFail: 50
+      });
+
+      // 4. Await discovery execution
+      await job.finished;
+
+      // 5. Query newly auto-onboarded plants under this company to link them
+      const dbPlants = await prisma.plants.findMany({
+        where: { company_id: Number(companyId) },
+        orderBy: { id: 'asc' }
+      });
+
+      if (dbPlants.length === 0) {
+        // Clean up temp account if no plants were found
+        await prisma.website_accounts.delete({
+          where: { id: account.id }
+        }).catch(() => {});
+
+        return res.status(400).json({
+          success: false,
+          error: 'Scraper executed, but no stations/plants were found under this account.'
+        });
+      }
+
+      // 6. Link the website account to the first plant discovered and enable it
+      await prisma.website_accounts.update({
+        where: { id: account.id },
+        data: {
+          plant_id: dbPlants[0].id,
+          enabled: true
+        }
+      });
 
       // Log audit
       await prisma.audit_logs.create({

@@ -23,59 +23,18 @@ app.get('/api/health', (req, res) => {
 // Main API Router
 app.use('/api', apiRouter);
 
-// Background Cron Scheduler (Runs every minute to check active plants and trigger due scrapers)
+// Background Scraper Workers & Scheduler Initialization
+import { initWorkers } from './src/services/worker.js';
+import { tick } from './src/services/scheduler.js';
 import cron from 'node-cron';
-import prisma from './src/config/prisma.js';
-import { runScraper, syncTelemetryFromJson } from './src/services/scraperRunner.js';
-import { runAnomalyDetection } from './src/services/anomalyDetector.js';
 
+// Initialize the queue workers on startup
+initWorkers();
+
+// Background Cron Scheduler (Ticks every minute to queue due scrapers using jitter offsets)
 cron.schedule('* * * * *', async () => {
-  console.log('--- [Cron] Polling active website accounts for scheduling... ---');
-  try {
-    const activeAccounts = await prisma.website_accounts.findMany({
-      where: { enabled: true },
-      include: { website_providers: true }
-    });
-    
-    const now = new Date();
-    
-    for (const account of activeAccounts) {
-      try {
-        let isDue = false;
-        if (!account.last_scraped_at) {
-          isDue = true;
-        } else {
-          const elapsedMinutes = (now - new Date(account.last_scraped_at)) / 1000 / 60;
-          isDue = elapsedMinutes >= (account.scrape_interval_minutes || 5);
-        }
-
-        if (isDue) {
-          const providerName = account.website_providers?.provider_name || 'Polycab';
-          console.log(`[Cron] Scraping due for Plant ID ${account.plant_id} (${providerName}). Interval: ${account.scrape_interval_minutes}m.`);
-          
-          // 1. Run Puppeteer scraper and irradiance post-processor
-          await runScraper(providerName, account.username, account.password);
-          
-          // 2. Sync all newly scraped telemetry records (opportunistic)
-          await syncTelemetryFromJson(account.plant_id);
-
-          // 3. Update last_scraped_at to prevent immediate repeat scraping
-          await prisma.website_accounts.update({
-            where: { id: account.id },
-            data: { last_scraped_at: now }
-          });
-
-          console.log(`[Cron] Successfully completed scraping and updated last_scraped_at for Plant ID ${account.plant_id}.`);
-        }
-      } catch (err) {
-        console.error(`[Cron] Failed during schedule check/scrape for plant ${account.plant_id}:`, err.message);
-      }
-    }
-    // 4. Run global anomaly checks
-    await runAnomalyDetection();
-  } catch (err) {
-    console.error('[Cron] Failed to process scheduled scraper check:', err.message);
-  }
+  console.log('--- [Cron] Running scheduler tick... ---');
+  await tick();
 });
 
 // Start server
