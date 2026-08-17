@@ -83,7 +83,14 @@ export async function scrape(account, page) {
     await loginBtn.click();
 
     console.log("[Solis] Waiting for dashboard redirection...");
-    await page.waitForFunction(() => window.location.href.includes('/station'), { timeout: 30000 });
+    try {
+      await page.waitForFunction(() => {
+        const href = window.location.href;
+        return href.includes('/station') || href.includes('/homepage') || href.includes('/p/index') || href.includes('/dashboard');
+      }, { timeout: 30000 });
+    } catch (e) {
+      console.warn("[Solis] Redirection check timed out, checking for iframe context anyway...");
+    }
     await page.waitForTimeout(10000); // 10s wait for Vue iframe load
   } else {
     console.log(`[Solis] Already logged in via session state.`);

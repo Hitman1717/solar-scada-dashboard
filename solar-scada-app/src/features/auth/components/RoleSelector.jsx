@@ -34,8 +34,8 @@ export default function RoleSelector({ onLoginSuccess }) {
       return;
     }
 
-    // Role selection bypass - if a role is selected from the dropdown, bypass credentials and log in directly
-    if (role && role !== 'Select category') {
+    // Role selection bypass - if a role is selected from the dropdown, bypass credentials and log in directly (only if credentials are empty)
+    if (role && role !== 'Select category' && !email && !password) {
       const result = await db.bypassLogin(null, role);
       if (result.success) {
         onLoginSuccess({

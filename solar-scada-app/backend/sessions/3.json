@@ -1,0 +1,45 @@
+{
+  "cookies": [
+    {
+      "name": "timezone",
+      "value": "Asia%2FKolkata",
+      "domain": "pv.polycabmonitoring.com",
+      "path": "/dist/server/api/CodeIgniter/index.php/Senergytec/web/v2/Inverterapi",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://pv.polycabmonitoring.com",
+      "localStorage": [
+        {
+          "name": "ADMIN_0.0.1_oss_user",
+          "value": "e897c60fade6dd2422ab3b85a066bd02e14d1388126ca798e0ca6e66588ace54d753af234a7f5aebbdf37d8f2044d2cabb9656237d4e57adb5575efe1c4bd7c4"
+        },
+        {
+          "name": "token",
+          "value": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJwdi5wb2x5Y2FibW9uaXRvcmluZy5jb20iLCJhdWQiOiJwdi5wb2x5Y2FibW9uaXRvcmluZy5jb20iLCJpYXQiOjE3ODYxMjM2OTAsIm5iZiI6MTc4NjEyMzY5MCwiZXhwIjoxODE3MjI3NjkwLCJkYXRhIjp7Ik1lbWJlckF1dG9JRCI6bnVsbH19.b3BKRjE34kzXu56thbTeS1rntEn5Roq-1b-0V2fceT8"
+        },
+        {
+          "name": "ADMIN_0.0.1_isDemo",
+          "value": "f39068eba17d3c0720359c74d9350936cd4db7f668d4cfce63d42ee9f52ba06b5ce0acbb280d2260f82d0ea965f31f64d37d6ef49156e4c0f76d04b5bbaa90cf"
+        },
+        {
+          "name": "ADMIN_0.0.1_loginError",
+          "value": "f39068eba17d3c0720359c74d9350936cd4db7f668d4cfce63d42ee9f52ba06b294245a792e5858249c9214c0fa44c109f596d0e43b880c268ff1677fc5498f9"
+        },
+        {
+          "name": "umi_locale",
+          "value": "null"
+        },
+        {
+          "name": "ADMIN_0.0.1_hiddenHybridFlow",
+          "value": "e897c60fade6dd2422ab3b85a066bd02e14d1388126ca798e0ca6e66588ace543938e664e98adccb169923e07a670a9e28556c799fa92f2c5bce6a4b2b4ee4c4"
+        }
+      ]
+    }
+  ]
+}

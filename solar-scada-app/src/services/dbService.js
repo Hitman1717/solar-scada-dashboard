@@ -3,6 +3,8 @@ import excelData from './excel_data.json';
 
 const DB_KEY_PREFIX = 'solar_scada_';
 
+const API_BASE_URL = '/api';
+
 const TABLES = {
   COMPANIES: 'companies',
   USERS: 'users',
@@ -186,7 +188,7 @@ export async function initializeDB() {
   }
 
   try {
-    const response = await fetchWithAuth('http://localhost:5000/api/db');
+    const response = await fetchWithAuth(`${API_BASE_URL}/db`);
     if (response.status === 401 || response.status === 403) {
       console.warn('Session expired or unauthorized. Loading LocalStorage fallback...');
       loadLocalStorageFallback();
@@ -229,7 +231,7 @@ export const db = {
     list.push(newItem);
 
     if (isUsingBackend) {
-      fetchWithAuth('http://localhost:5000/api/db/insert', {
+      fetchWithAuth(`${API_BASE_URL}/db/insert`, {
         method: 'POST',
         body: JSON.stringify({ table: tableName, item: newItem })
       }).catch(err => console.error(`Failed to sync insert for ${tableName}:`, err));
@@ -250,7 +252,7 @@ export const db = {
       };
       
       if (isUsingBackend) {
-        fetchWithAuth('http://localhost:5000/api/db/update', {
+        fetchWithAuth(`${API_BASE_URL}/db/update`, {
           method: 'POST',
           body: JSON.stringify({ table: tableName, id, updates })
         }).catch(err => console.error(`Failed to sync update for ${tableName}:`, err));
@@ -266,7 +268,7 @@ export const db = {
     cache[tableName] = (cache[tableName] || []).filter(item => item.id !== Number(id) && item.id !== id);
     
     if (isUsingBackend) {
-      fetchWithAuth('http://localhost:5000/api/db/delete', {
+      fetchWithAuth(`${API_BASE_URL}/db/delete`, {
         method: 'POST',
         body: JSON.stringify({ table: tableName, id })
       }).catch(err => console.error(`Failed to sync delete for ${tableName}:`, err));
@@ -296,7 +298,7 @@ export const db = {
       cache[TABLES.PLANT_USERS] = mappings;
 
       if (isUsingBackend) {
-        fetchWithAuth('http://localhost:5000/api/db/assign-plant', {
+        fetchWithAuth(`${API_BASE_URL}/db/assign-plant`, {
           method: 'POST',
           body: JSON.stringify({ user_id: Number(userId), plant_id: Number(plantId) })
         }).catch(err => console.error('Failed to sync assign-plant:', err));
@@ -312,7 +314,7 @@ export const db = {
     cache[TABLES.PLANT_USERS] = filtered;
 
     if (isUsingBackend) {
-      fetchWithAuth('http://localhost:5000/api/db/remove-plant', {
+      fetchWithAuth(`${API_BASE_URL}/db/remove-plant`, {
         method: 'POST',
         body: JSON.stringify({ user_id: Number(userId), plant_id: Number(plantId) })
       }).catch(err => console.error('Failed to sync remove-plant:', err));
@@ -342,7 +344,7 @@ export const db = {
   // Secure Authentication API Operations
   login: async (email, password, role) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, role })
@@ -373,7 +375,7 @@ export const db = {
 
   bypassLogin: async (email, role) => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/bypass', {
+      const response = await fetch(`${API_BASE_URL}/auth/bypass`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, role })
@@ -413,7 +415,7 @@ export const db = {
   getVariables: async (companyId, plantId) => {
     if (isUsingBackend) {
       try {
-        let url = 'http://localhost:5000/api/variables';
+        let url = `${API_BASE_URL}/variables`;
         const params = new URLSearchParams();
         if (companyId) params.append('company_id', companyId);
         if (plantId) params.append('plant_id', plantId);
@@ -436,7 +438,7 @@ export const db = {
   saveVariable: async (variable) => {
     if (isUsingBackend) {
       try {
-        const response = await fetchWithAuth('http://localhost:5000/api/variables', {
+        const response = await fetchWithAuth(`${API_BASE_URL}/variables`, {
           method: 'POST',
           body: JSON.stringify(variable)
         });
@@ -465,7 +467,7 @@ export const db = {
   onboardScraperAccount: async (providerId, username, password, scrapeIntervalMinutes) => {
     if (isUsingBackend) {
       try {
-        const response = await fetchWithAuth('http://localhost:5000/api/scrape/onboard', {
+        const response = await fetchWithAuth(`${API_BASE_URL}/scrape/onboard`, {
           method: 'POST',
           body: JSON.stringify({ providerId, username, password, scrapeIntervalMinutes })
         });
@@ -473,7 +475,7 @@ export const db = {
         
         // Fetch fresh database snapshot to reload new plants in the client cache
         if (result.success) {
-          const freshDbResponse = await fetchWithAuth('http://localhost:5000/api/db');
+          const freshDbResponse = await fetchWithAuth(`${API_BASE_URL}/db`);
           const freshDbResult = await freshDbResponse.json();
           if (freshDbResult.success && freshDbResult.data) {
             cache = freshDbResult.data;
@@ -504,7 +506,7 @@ export const db = {
   triggerScrape: async (plantId) => {
     if (isUsingBackend) {
       try {
-        const response = await fetchWithAuth(`http://localhost:5000/api/scrape/${plantId}`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/scrape/${plantId}`, {
           method: 'POST'
         });
         const result = await response.json();

@@ -59,8 +59,8 @@ async function processScrapeJob(job, oemKey) {
     where: { id: Number(accountId) }
   });
 
-  if (!account || !account.enabled) {
-    console.log(`[Worker:${oemKey}] Account ${accountId} is deleted or disabled. Skipping.`);
+  if (!account || (!account.enabled && !job.data.isOnboarding)) {
+    console.log(`[Worker:${oemKey}] Account ${accountId} is deleted or disabled (and not onboarding). Skipping.`);
     return;
   }
 
@@ -137,38 +137,47 @@ async function processScrapeJob(job, oemKey) {
   }
 }
 
-async function saveScrapedResults(account, scrapedData) {
+export async function saveScrapedResults(account, scrapedData) {
   if (!scrapedData || scrapedData.length === 0) {
     console.log(`[Worker] No new telemetry data parsed by scraper.`);
     return;
   }
 
-  // Get active database plants for resolving names to IDs dynamically
+  // 1. Get active database plants for resolving names to IDs dynamically
   const dbPlants = await prisma.plants.findMany();
   const nameToId = {};
   dbPlants.forEach(p => {
     nameToId[p.plant_name.toLowerCase().trim()] = p.id;
   });
 
-  // Read existing solar_data.json
-  let fileData = { plants: [], telemetry: [] };
-  if (fs.existsSync(JSON_DATA_FILE)) {
-    try {
-      fileData = JSON.parse(fs.readFileSync(JSON_DATA_FILE, 'utf8'));
-    } catch (e) {
-      console.error(`[Worker] Failed to parse solar_data.json, recreating...`);
-    }
+  // Determine starting ID for new dynamically discovered plants
+  let nextId = 1;
+  if (dbPlants.length > 0) {
+    nextId = Math.max(...dbPlants.map(p => p.id)) + 1;
   }
-  if (!fileData.plants) fileData.plants = [];
-  if (!fileData.telemetry) fileData.telemetry = [];
 
+  // Track all plants we see in this scrape session
+  const sessionPlants = {}; // name -> id
+
+  // 2. Build list of records with resolved/allocated plant IDs
   const newRows = [];
   for (const record of scrapedData) {
-    const lowerName = record.plant_name.toLowerCase().trim();
+    const cleanName = record.plant_name.trim();
+    const lowerName = cleanName.toLowerCase();
+    
     let recordPlantId = nameToId[lowerName];
     
+    // If not in database, check if we already allocated an ID in this session
     if (!recordPlantId) {
-      recordPlantId = account.plant_id || 999;
+      if (sessionPlants[lowerName]) {
+        recordPlantId = sessionPlants[lowerName];
+      } else {
+        recordPlantId = nextId++;
+        sessionPlants[lowerName] = recordPlantId;
+        console.log(`[Worker] Dynamically allocated ID ${recordPlantId} for discovered plant: '${cleanName}'`);
+      }
+    } else {
+      sessionPlants[lowerName] = recordPlantId;
     }
 
     newRows.push({
@@ -187,6 +196,18 @@ async function saveScrapedResults(account, scrapedData) {
       created_at: new Date().toISOString().replace('T', ' ').substring(0, 19)
     });
   }
+
+  // 3. Read existing solar_data.json
+  let fileData = { plants: [], telemetry: [] };
+  if (fs.existsSync(JSON_DATA_FILE)) {
+    try {
+      fileData = JSON.parse(fs.readFileSync(JSON_DATA_FILE, 'utf8'));
+    } catch (e) {
+      console.error(`[Worker] Failed to parse solar_data.json, recreating...`);
+    }
+  }
+  if (!fileData.plants) fileData.plants = [];
+  if (!fileData.telemetry) fileData.telemetry = [];
 
   // Merge old and new records
   const combined = [...fileData.telemetry, ...newRows];
@@ -211,22 +232,53 @@ async function saveScrapedResults(account, scrapedData) {
     row.id = idx + 1;
   });
 
+  // Re-build file plants mapping list, adding the newly discovered session plants
   const uniquePlantIds = [...new Set(unique.map(r => r.plant_id))];
-  const filePlants = dbPlants
-    .filter(p => uniquePlantIds.includes(p.id))
-    .map(p => ({
-      id: p.id,
-      plant_name: p.plant_name.toUpperCase()
-    }));
+  
+  const plantsMap = {};
+  // First, add all existing database plants
+  dbPlants.forEach(p => {
+    plantsMap[p.id] = p.plant_name.toUpperCase();
+  });
+  // Then, add the dynamically discovered plants from this session
+  Object.entries(sessionPlants).forEach(([lowerName, id]) => {
+    if (!plantsMap[id]) {
+      const originalRecord = scrapedData.find(r => r.plant_name.toLowerCase().trim() === lowerName);
+      plantsMap[id] = (originalRecord ? originalRecord.plant_name : lowerName).toUpperCase();
+    }
+  });
+
+  const filePlants = uniquePlantIds
+    .filter(id => plantsMap[id])
+    .map(id => {
+      const record = unique.find(r => r.plant_id === id);
+      let capacity = '10.00 kWp';
+      if (record && record.raw_json) {
+        try {
+          const raw = typeof record.raw_json === 'string' ? JSON.parse(record.raw_json) : record.raw_json;
+          if (raw.GoodsKWP) {
+            capacity = parseFloat(raw.GoodsKWP).toFixed(2) + ' kWp';
+          } else if (raw["PV Capacity"]) {
+            capacity = String(raw["PV Capacity"]).toLowerCase().includes('kw') ? String(raw["PV Capacity"]) : (String(raw["PV Capacity"]) + ' kWp');
+          }
+        } catch (e) {}
+      }
+      return {
+        id: id,
+        plant_name: plantsMap[id],
+        plant_capacity: capacity
+      };
+    })
+    .sort((a, b) => a.id - b.id);
 
   fs.writeFileSync(JSON_DATA_FILE, JSON.stringify({
     plants: filePlants,
     telemetry: unique
   }, null, 2), 'utf8');
 
-  console.log(`[Worker] Updated solar_data.json (telemetry rows count: ${unique.length}).`);
+  console.log(`[Worker] Updated solar_data.json with ${newRows.length} records and ${filePlants.length} active plants.`);
 
-  // Opportunistic sync to database and anomaly detection trigger
+  // 4. Opportunistic sync to database and anomaly detection trigger
   await syncTelemetryFromJson(account.plant_id);
 }
 

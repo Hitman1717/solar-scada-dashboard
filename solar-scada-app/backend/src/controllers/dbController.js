@@ -177,11 +177,26 @@ export const dbController = {
       // Filter out auto-generated fields if they are null/undefined
       if (payload.id === null || payload.id === undefined) {
         delete payload.id;
+      } else if (table !== 'plant_users') {
+        // If the ID is specified but already exists in the database, delete it so the database can auto-generate a unique ID
+        const existing = await prisma[table].findUnique({
+          where: { id: Number(payload.id) }
+        });
+        if (existing) {
+          delete payload.id;
+        }
       }
 
       const inserted = await prisma[table].create({
         data: payload
       });
+
+      // Synchronize database sequence to prevent future auto-increment conflicts
+      if (table !== 'plant_users') {
+        await prisma.$executeRawUnsafe(`
+          SELECT setval('${table}_id_seq', COALESCE((SELECT MAX(id) FROM ${table}), 1))
+        `).catch(err => console.error(`Failed to sync sequence for ${table}:`, err));
+      }
 
       let serialized = serializePrisma(inserted);
 

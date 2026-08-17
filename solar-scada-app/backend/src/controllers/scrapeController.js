@@ -111,7 +111,8 @@ export const scrapeController = {
       const queue = queues.get(oemKey);
       const job = await queue.add('scrape', {
         accountId: account.id,
-        oemProviderId: Number(providerId)
+        oemProviderId: Number(providerId),
+        isOnboarding: true
       }, {
         attempts: 1,
         removeOnComplete: true,
@@ -147,6 +148,26 @@ export const scrapeController = {
           enabled: true
         }
       });
+
+      // Link any other discovered plants by creating separate website_accounts rows
+      for (let i = 1; i < dbPlants.length; i++) {
+        const extraPlant = dbPlants[i];
+        const existingAcc = await prisma.website_accounts.findFirst({
+          where: { plant_id: extraPlant.id }
+        });
+        if (!existingAcc) {
+          await prisma.website_accounts.create({
+            data: {
+              plant_id: extraPlant.id,
+              provider_id: Number(providerId),
+              username: username,
+              password: password,
+              scrape_interval_minutes: Number(scrapeIntervalMinutes) || 5,
+              enabled: true
+            }
+          });
+        }
+      }
 
       // Log audit
       await prisma.audit_logs.create({

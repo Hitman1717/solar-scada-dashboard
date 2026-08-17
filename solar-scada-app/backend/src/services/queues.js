@@ -16,6 +16,8 @@ class CustomQueue {
       resolve = res;
       reject = rej;
     });
+    // Prevent unhandled promise rejection crash if no one awaits the finished promise
+    finished.catch(() => {});
 
     const job = {
       id: Math.random().toString(36).substring(2, 9),
