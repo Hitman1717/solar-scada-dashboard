@@ -49,6 +49,12 @@ export default function TopBanner({
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* MVP Demo Badge */}
+            <span className="hidden md:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-400/15 text-amber-300 border border-amber-400/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+              <span>MVP Demo (Temporary Data)</span>
+            </span>
+
             {/* User Role Label */}
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-xs font-bold tracking-wider text-[#bfd4f2] uppercase">

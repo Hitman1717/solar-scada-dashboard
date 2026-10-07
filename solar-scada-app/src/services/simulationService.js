@@ -53,6 +53,15 @@ export function runSimulationTick(plantId) {
 
   // Factor in active issues affecting power loss
   const activeIssues = db.getAll(db.TABLES.PLANT_ISSUES).filter(i => i.plant_id === Number(plantId) && i.status === 'Active');
+  
+  // Dynamic status update based on active critical issues
+  const activeCritical = activeIssues.filter(i => i.severity === 'Critical');
+  if (activeCritical.length > 0 && targetPlant.status !== 'Bad') {
+    db.update(db.TABLES.PLANTS, plantId, { status: 'Bad' });
+  } else if (activeCritical.length === 0 && targetPlant.status === 'Bad') {
+    db.update(db.TABLES.PLANTS, plantId, { status: 'Normal' });
+  }
+
   let powerLossKW = 0;
   activeIssues.forEach(issue => {
     if (issue.severity === 'Critical') {
@@ -131,13 +140,15 @@ function triggerRandomIncident(plantId) {
   const isCritical = Math.random() < 0.2;
   
   const issueTypes = isCritical 
-    ? ['Grid Failure', 'Inverter Fault']
+    ? ['Grid Failure', 'Inverter Fault', 'ScrapeFailure']
     : ['High Temperature', 'Low Generation'];
   
   const issueType = issueTypes[Math.floor(Math.random() * issueTypes.length)];
-  const message = isCritical 
-    ? `Critical fault ${issueType} detected on string table ${randomTable.table_number}.`
-    : `Warning: ${issueType} anomaly reported on string table ${randomTable.table_number}.`;
+  const message = issueType === 'ScrapeFailure'
+    ? 'Scraping failed consistently after maximum retries. Error: Connection timed out to Solis cloud services.'
+    : (isCritical 
+        ? `Critical fault ${issueType} detected on string table ${randomTable.table_number}.`
+        : `Warning: ${issueType} anomaly reported on string table ${randomTable.table_number}.`);
 
   db.insert(db.TABLES.PLANT_ISSUES, {
     plant_id: Number(plantId),
@@ -150,7 +161,11 @@ function triggerRandomIncident(plantId) {
     resolved_at: null
   });
 
-  db.logAudit(null, `System raised incident ${issueType} for Table ${randomTable.table_number}`, 'PlantIssue', null);
+  const auditMsg = issueType === 'ScrapeFailure'
+    ? `System raised incident ScrapeFailure due to login portal timeout`
+    : `System raised incident ${issueType} for Table ${randomTable.table_number}`;
+
+  db.logAudit(null, auditMsg, 'PlantIssue', null);
 }
 
 function updateTablesStatus(plantId) {

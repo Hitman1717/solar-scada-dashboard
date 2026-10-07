@@ -179,34 +179,12 @@ function loadLocalStorageFallback() {
   }
 }
 
-// Initialize Database from Server
+// Initialize Database in MVP Standalone Mode (using temporary mock data)
 export async function initializeDB() {
-  if (!authToken) {
-    console.log('No authentication token available. Starting in mock/fallback mode.');
-    loadLocalStorageFallback();
-    return false;
-  }
-
-  try {
-    const response = await fetchWithAuth(`${API_BASE_URL}/db`);
-    if (response.status === 401 || response.status === 403) {
-      console.warn('Session expired or unauthorized. Loading LocalStorage fallback...');
-      loadLocalStorageFallback();
-      return false;
-    }
-    const result = await response.json();
-    if (result.success && result.data) {
-      cache = result.data;
-      isUsingBackend = true;
-      console.log('Successfully initialized database cache from PostgreSQL backend.');
-      return true;
-    }
-  } catch (err) {
-    console.warn('Express backend not reachable, falling back to LocalStorage:', err);
-  }
-
+  console.log('[MVP Mode] Initializing database with local temporary/mock telemetry data.');
   loadLocalStorageFallback();
-  return false;
+  isUsingBackend = false;
+  return true;
 }
 
 export const db = {
@@ -341,69 +319,45 @@ export const db = {
     });
   },
 
-  // Secure Authentication API Operations
+  // Authentication Operations (MVP Mode with Local Temporary Data)
   login: async (email, password, role) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role })
-      });
-      const result = await response.json();
-      if (result.success) {
-        authToken = result.token;
-        isUsingBackend = true;
-        // Fetch database dump immediately
-        await initializeDB();
-        return { success: true, token: result.token, user: result.user };
-      } else {
-        return { success: false, error: result.error };
-      }
-    } catch (err) {
-      console.error('Login request failed, fallback to LocalStorage:', err);
-      // Fallback local auth check
-      loadLocalStorageFallback();
-      const users = cache[TABLES.USERS];
-      const matched = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === role);
-      if (matched) {
-        isUsingBackend = false;
-        return { success: true, token: 'mock-local-token', user: matched };
-      }
-      return { success: false, error: 'Invalid credentials or authentication server is offline.' };
+    loadLocalStorageFallback();
+    const users = cache[TABLES.USERS] || [];
+    const matched = users.find(u => 
+      u.email.toLowerCase() === email.toLowerCase() && 
+      (password ? u.password === password : true) && 
+      (role && role !== 'Select category' ? u.role === role : true)
+    );
+
+    if (matched) {
+      authToken = 'mock-local-token';
+      isUsingBackend = false;
+      return { success: true, token: 'mock-local-token', user: matched };
     }
+    return { success: false, error: 'Invalid credentials. For demo, try password "password".' };
   },
 
   bypassLogin: async (email, role) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/bypass`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role })
-      });
-      const result = await response.json();
-      if (result.success) {
-        authToken = result.token;
-        isUsingBackend = true;
-        await initializeDB();
-        return { success: true, token: result.token, user: result.user };
-      } else {
-        return { success: false, error: result.error };
-      }
-    } catch (err) {
-      console.error('Bypass login failed, fallback to LocalStorage:', err);
-      loadLocalStorageFallback();
-      let matched = null;
-      if (email) {
-        matched = cache[TABLES.USERS].find(u => u.email.toLowerCase() === email.toLowerCase());
-      } else if (role) {
-        matched = cache[TABLES.USERS].find(u => u.role === role);
-      }
-      if (matched) {
-        isUsingBackend = false;
-        return { success: true, token: 'mock-local-token', user: matched };
-      }
-      return { success: false, error: 'Bypass user not found.' };
+    loadLocalStorageFallback();
+    const users = cache[TABLES.USERS] || [];
+    let matched = null;
+    if (email) {
+      matched = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    } else if (role) {
+      matched = users.find(u => u.role === role);
     }
+    
+    // Default fallback to Super Admin if not matched
+    if (!matched && users.length > 0) {
+      matched = users[0];
+    }
+
+    if (matched) {
+      authToken = 'mock-local-token';
+      isUsingBackend = false;
+      return { success: true, token: 'mock-local-token', user: matched };
+    }
+    return { success: false, error: 'Bypass user not found.' };
   },
 
   setToken: (token) => {
@@ -503,6 +457,8 @@ export const db = {
     }
   },
 
+  isUsingBackend: () => isUsingBackend,
+
   triggerScrape: async (plantId) => {
     if (isUsingBackend) {
       try {
@@ -519,7 +475,75 @@ export const db = {
         return { success: false, error: 'Scraper server is offline.' };
       }
     }
-    return { success: true, message: 'Local storage mock mode. Telemetry updated.' };
+    
+    // Local storage mock mode: resolve active ScrapeFailure issues for this plant
+    const issuesList = cache[TABLES.PLANT_ISSUES] || [];
+    let resolvedAny = false;
+    const updatedIssues = issuesList.map(issue => {
+      if (issue.plant_id === Number(plantId) && issue.issue_type === 'ScrapeFailure' && issue.status === 'Active') {
+        resolvedAny = true;
+        return {
+          ...issue,
+          status: 'Resolved',
+          resolved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      }
+      return issue;
+    });
+
+    if (resolvedAny) {
+      cache[TABLES.PLANT_ISSUES] = updatedIssues;
+      writeTable(TABLES.PLANT_ISSUES, updatedIssues);
+
+      // Restore plant status to Normal/Online
+      const plantList = cache[TABLES.PLANTS] || [];
+      const updatedPlants = plantList.map(p => {
+        if (p.id === Number(plantId)) {
+          return { ...p, status: 'Normal' };
+        }
+        return p;
+      });
+      cache[TABLES.PLANTS] = updatedPlants;
+      writeTable(TABLES.PLANTS, updatedPlants);
+    }
+
+    return { success: true, message: 'Local storage mock mode. Scraper resolved and telemetry updated.' };
+  },
+
+  simulateScrapeFailure: (plantId) => {
+    const list = cache[TABLES.PLANT_ISSUES] || [];
+    const existing = list.find(i => i.plant_id === Number(plantId) && i.issue_type === 'ScrapeFailure' && i.status === 'Active');
+    if (existing) return false;
+
+    const newId = list.length > 0 ? Math.max(...list.map(i => i.id || 0)) + 1 : 1;
+    const newIssue = {
+      id: newId,
+      plant_id: Number(plantId),
+      telemetry_id: null,
+      issue_type: 'ScrapeFailure',
+      severity: 'Critical',
+      message: 'Scraping failed consistently after maximum retries. Error: DNS resolution timeout on soliscloud.com portal.',
+      status: 'Active',
+      started_at: new Date().toISOString(),
+      resolved_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    list.push(newIssue);
+    writeTable(TABLES.PLANT_ISSUES, list);
+
+    const plantList = cache[TABLES.PLANTS] || [];
+    const updatedPlants = plantList.map(p => {
+      if (p.id === Number(plantId)) {
+        return { ...p, status: 'Bad' };
+      }
+      return p;
+    });
+    cache[TABLES.PLANTS] = updatedPlants;
+    writeTable(TABLES.PLANTS, updatedPlants);
+
+    return true;
   },
 
   TABLES

@@ -104,11 +104,60 @@ export default function RoleSelector({ onLoginSuccess }) {
 
             <button
               onClick={() => setIsFormMode(true)}
-              className="w-full py-3.5 px-6 rounded-full border-2 border-[#d4af37] text-[#b8860b] font-semibold bg-white hover:bg-[#fffbeb] active:bg-[#fff7ed] shadow-sm flex items-center justify-center space-x-2.5 transition-all duration-200"
+              className="w-full py-3 px-6 rounded-full border-2 border-[#d4af37] text-[#b8860b] font-semibold bg-white hover:bg-[#fffbeb] active:bg-[#fff7ed] shadow-sm flex items-center justify-center space-x-2.5 transition-all duration-200 cursor-pointer text-sm"
             >
-              <Shield className="w-5 h-5" />
+              <Shield className="w-4 h-4" />
               <span>Enter credentials</span>
             </button>
+
+            {/* MVP Quick Demo Access */}
+            <div className="w-full pt-4 border-t border-slate-100 space-y-2.5">
+              <div className="flex items-center justify-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <p className="text-xs font-bold text-slate-600 tracking-wider uppercase">⚡ Instant MVP Demo Access</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 pt-1">
+                <button
+                  onClick={async () => {
+                    const res = await db.bypassLogin(null, 'SUPER_ADMIN');
+                    if (res.success) onLoginSuccess({ ...res.user, token: res.token });
+                  }}
+                  className="w-full py-2 px-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span>👑</span>
+                    <span>Super Admin</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Full Global SCADA</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await db.bypassLogin(null, 'ADMIN');
+                    if (res.success) onLoginSuccess({ ...res.user, token: res.token });
+                  }}
+                  className="w-full py-2 px-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span>🛠️</span>
+                    <span>Plant Admin</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Telemetry & Inverters</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await db.bypassLogin(null, 'MANAGEMENT');
+                    if (res.success) onLoginSuccess({ ...res.user, token: res.token });
+                  }}
+                  className="w-full py-2 px-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span>📊</span>
+                    <span>Executive Mgmt.</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">KPIs & Performance</span>
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           /* Form Input Mode */

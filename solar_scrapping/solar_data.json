@@ -2,67 +2,13 @@
   "plants": [
     {
       "id": 1,
-      "plant_name": "MY SPACE STUDY HALL 1"
+      "plant_name": "VASUDEV BLUE FLIED SITE ",
+      "plant_capacity": "10.00 kWp"
     },
     {
       "id": 2,
-      "plant_name": "MY SPACE STUDY HALL"
-    },
-    {
-      "id": 3,
-      "plant_name": "VASUDEV BLUE FLIED SITE"
-    },
-    {
-      "id": 4,
-      "plant_name": "VILLA NUM 111"
-    },
-    {
-      "id": 5,
-      "plant_name": "RV2"
-    },
-    {
-      "id": 6,
-      "plant_name": "RV1"
-    },
-    {
-      "id": 7,
-      "plant_name": "MELGIRI ENTERPRISES HOUSE 3"
-    },
-    {
-      "id": 8,
-      "plant_name": "MELGIRI ENTERPRISES"
-    },
-    {
-      "id": 9,
-      "plant_name": "MELGIRI ENTERPRISES HOUSE 2"
-    },
-    {
-      "id": 10,
-      "plant_name": "MELGIRI FARM 02"
-    },
-    {
-      "id": 11,
-      "plant_name": "MELGIRI FARMS 01"
-    },
-    {
-      "id": 12,
-      "plant_name": "MAGNA VILLA 15"
-    },
-    {
-      "id": 13,
-      "plant_name": "ABHILASH REDDY INCRIBLE HALLMARK VILLA NO.24"
-    },
-    {
-      "id": 14,
-      "plant_name": "ARYA VYSYA ANNA SATRAM"
-    },
-    {
-      "id": 15,
-      "plant_name": "CENTRAL UNIVERSITY OF HARYANA"
-    },
-    {
-      "id": 16,
-      "plant_name": "MAGNA VILLA 41"
+      "plant_name": "VILLA NUM 111",
+      "plant_capacity": "10.00 kWp"
     }
   ],
   "telemetry": [
@@ -1233,6 +1179,342 @@
       "status": "Normal",
       "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":1106.4,\"EToday\":2000,\"Htotal\":282,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":400,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-27 11:47:18\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":260000,\"Unit\":\"USD\"}",
       "created_at": "2026-07-27 06:17:35"
+    },
+    {
+      "plant_id": 1,
+      "timestamp": "2026-07-29 19:30:57",
+      "power": 0,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0,
+      "total_generation": 24689,
+      "temperature": null,
+      "status": "Offline",
+      "raw_json": "{\"InverterStatus\":{\"Green\":0,\"yellow\":0,\"red\":0,\"gray\":1},\"AutoID\":\"431326\",\"GoodsTypeName\":\"Vasudev blue flied site \",\"GreenPercent\":0,\"Light\":4,\"CurrPac\":0,\"EToday\":0,\"Htotal\":1367,\"Price\":\"6\",\"GoodsKWP\":\"74.5\",\"effect\":0,\"CreateDate\":\"2026-05-22 16:06:27\",\"SetUpTime\":\"2026-05-22\",\"LastUpdate\":\"2026-07-29 19:30:57\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":24689000,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 01:56:27",
+      "id": 74
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 07:21:39",
+      "power": 0.1477,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.09,
+      "total_generation": 287.3,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":147.7,\"EToday\":90,\"Htotal\":329,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":18,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 07:21:39\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287300,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 01:56:27",
+      "id": 75
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 07:27:08",
+      "power": 0.1972,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.1,
+      "total_generation": 287.31,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":197.2,\"EToday\":100,\"Htotal\":329,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":20,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 07:27:08\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287310,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:00:58",
+      "id": 76
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 07:36:38",
+      "power": 0.2012,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.14,
+      "total_generation": 287.35,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":201.2,\"EToday\":140,\"Htotal\":329,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":28,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 07:36:38\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287350,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:09:18",
+      "id": 77
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 07:47:36",
+      "power": 0.16119999999999998,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.16,
+      "total_generation": 287.37,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":161.2,\"EToday\":160,\"Htotal\":329,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":32,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 07:47:36\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287370,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:18:35",
+      "id": 78
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 07:53:12",
+      "power": 0.16290000000000002,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.18,
+      "total_generation": 287.39,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":162.9,\"EToday\":180,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":36,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 07:53:12\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287390,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:23:34",
+      "id": 79
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 07:57:12",
+      "power": 0.1935,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.19,
+      "total_generation": 287.4,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":193.5,\"EToday\":190,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":38,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 07:57:12\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287400,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:28:35",
+      "id": 80
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 08:03:24",
+      "power": 0.18230000000000002,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.21,
+      "total_generation": 287.42,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":182.3,\"EToday\":210,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":42,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 08:03:24\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287420,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:33:36",
+      "id": 81
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 08:08:13",
+      "power": 0.1353,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.22,
+      "total_generation": 287.43,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":135.3,\"EToday\":220,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":44,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 08:08:13\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287430,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:38:35",
+      "id": 82
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 08:12:35",
+      "power": 0.1124,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.23,
+      "total_generation": 287.44,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":112.4,\"EToday\":230,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":46,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 08:12:35\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287440,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:43:35",
+      "id": 83
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 08:16:23",
+      "power": 0.1105,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.24,
+      "total_generation": 287.45,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":110.5,\"EToday\":240,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":48,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 08:16:23\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287450,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:48:36",
+      "id": 84
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 08:22:50",
+      "power": 0.1398,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.25,
+      "total_generation": 287.46,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":139.8,\"EToday\":250,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":50,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 08:22:50\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287460,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:53:35",
+      "id": 85
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 08:27:41",
+      "power": 0.1306,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0.26,
+      "total_generation": 287.47,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":130.6,\"EToday\":260,\"Htotal\":330,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":52,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 08:27:41\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":287470,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 02:58:35",
+      "id": 86
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 11:53:45",
+      "power": 0.9585,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 3.06,
+      "total_generation": 290.27,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":958.5,\"EToday\":3060,\"Htotal\":334,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":612,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 11:53:45\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":290270,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 06:25:06",
+      "id": 87
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 11:58:10",
+      "power": 1.0664,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 3.15,
+      "total_generation": 290.36,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":1066.4,\"EToday\":3150,\"Htotal\":334,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":630,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 11:58:10\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":290360,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 06:33:15",
+      "id": 88
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 12:03:48",
+      "power": 1.7289,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 3.24,
+      "total_generation": 290.45,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":1728.9,\"EToday\":3240,\"Htotal\":334,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":648,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 12:03:48\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":290450,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 06:34:09",
+      "id": 89
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 12:07:05",
+      "power": 1.5868,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 3.37,
+      "total_generation": 290.58,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":1586.8,\"EToday\":3370,\"Htotal\":334,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":674,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 12:07:05\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":290580,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 06:37:19",
+      "id": 90
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 12:13:01",
+      "power": 0.5669,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 3.45,
+      "total_generation": 290.66,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":566.9,\"EToday\":3450,\"Htotal\":334,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":690,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 12:13:01\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":290660,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 06:43:37",
+      "id": 91
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-07-31 12:19:07",
+      "power": 1.1717,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 3.53,
+      "total_generation": 290.74,
+      "temperature": null,
+      "status": "Normal",
+      "raw_json": "{\"InverterStatus\":{\"Green\":1,\"yellow\":0,\"red\":0,\"gray\":0},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":100,\"Light\":1,\"CurrPac\":1171.7,\"EToday\":3530,\"Htotal\":334,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":706,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-07-31 12:19:07\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":290740,\"Unit\":\"USD\"}",
+      "created_at": "2026-07-31 06:50:41",
+      "id": 92
+    },
+    {
+      "plant_id": 1,
+      "timestamp": "2026-08-03 19:15:55",
+      "power": 0,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 0,
+      "total_generation": 25563,
+      "temperature": null,
+      "status": "Offline",
+      "raw_json": "{\"InverterStatus\":{\"Green\":0,\"yellow\":0,\"red\":0,\"gray\":1},\"AutoID\":\"431326\",\"GoodsTypeName\":\"Vasudev blue flied site \",\"GreenPercent\":0,\"Light\":4,\"CurrPac\":0,\"EToday\":0,\"Htotal\":1433,\"Price\":\"6\",\"GoodsKWP\":\"74.5\",\"effect\":0,\"CreateDate\":\"2026-05-22 16:06:27\",\"SetUpTime\":\"2026-05-22\",\"LastUpdate\":\"2026-08-03 19:15:55\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":25563000,\"Unit\":\"USD\"}",
+      "created_at": "2026-08-06 17:08:41",
+      "id": 93
+    },
+    {
+      "plant_id": 2,
+      "timestamp": "2026-08-06 18:57:12",
+      "power": 0,
+      "voltage": null,
+      "current": null,
+      "frequency": null,
+      "irradiance": null,
+      "daily_generation": 16.03,
+      "total_generation": 387.47,
+      "temperature": null,
+      "status": "Offline",
+      "raw_json": "{\"InverterStatus\":{\"Green\":0,\"yellow\":0,\"red\":0,\"gray\":1},\"AutoID\":\"501037\",\"GoodsTypeName\":\"Villa num 111\",\"GreenPercent\":0,\"Light\":4,\"CurrPac\":0,\"EToday\":16030,\"Htotal\":416,\"Price\":\"6\",\"GoodsKWP\":\"5\",\"effect\":3206,\"CreateDate\":\"2026-07-05 15:54:17\",\"SetUpTime\":\"2026-07-05\",\"LastUpdate\":\"2026-08-06 18:57:12\",\"view\":true,\"Inv\":1,\"GoodsTypePicName\":null,\"checkPlantType\":\"1\",\"ETotal\":387470,\"Unit\":\"USD\"}",
+      "created_at": "2026-08-06 17:08:41",
+      "id": 94
     }
   ]
 }
