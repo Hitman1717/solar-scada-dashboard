@@ -125,7 +125,7 @@ export async function syncTelemetryFromJson(plantId) {
       });
       if (!existingDbPlant && companyId) {
         console.log(`Auto-Discovering and Onboarding new Plant: ${p.plant_name}...`);
-        await prisma.plants.create({
+        const createdPlant = await prisma.plants.create({
           data: {
             company_id: companyId,
             plant_name: p.plant_name,
@@ -137,6 +137,28 @@ export async function syncTelemetryFromJson(plantId) {
             commission_date: p.commission_date ? new Date(p.commission_date) : new Date()
           }
         });
+
+        // Auto-assign the new plant to all users belonging to this company
+        const companyUsers = await prisma.users.findMany({
+          where: { company_id: companyId }
+        });
+        for (const u of companyUsers) {
+          await prisma.plant_users.create({
+            data: {
+              user_id: u.id,
+              plant_id: createdPlant.id
+            }
+          }).catch(() => {});
+        }
+      } else if (existingDbPlant) {
+        // If the plant exists but has default/null capacity, update it with correct scraped capacity
+        if (!existingDbPlant.plant_capacity || existingDbPlant.plant_capacity === '10.00 kWp') {
+          await prisma.plants.update({
+            where: { id: existingDbPlant.id },
+            data: { plant_capacity: p.plant_capacity }
+          });
+          console.log(`[Sync] Updated plant '${p.plant_name}' capacity to: ${p.plant_capacity}`);
+        }
       }
     }
 

@@ -3,6 +3,8 @@ import excelData from './excel_data.json';
 
 const DB_KEY_PREFIX = 'solar_scada_';
 
+const API_BASE_URL = '/api';
+
 const TABLES = {
   COMPANIES: 'companies',
   USERS: 'users',
@@ -35,13 +37,13 @@ let cache = {
 // Initial Seed Data (Excel data based, Polycab/Solis/Solax providers)
 const INITIAL_DATA = {
   [TABLES.COMPANIES]: [
-    { id: 1, company_name: 'msl', address: '123 Tech Park, Chennai', contact_person: 'Super Admin', contact_email: 'superadmin@msl.com', contact_phone: '+91 98765 43210', status: 'Active', created_at: '2025-01-10T10:00:00Z', updated_at: '2025-01-10T10:00:00Z' },
-    { id: 2, company_name: 'test', address: 'Gaddiannaram Road, Hyderabad', contact_person: 'Test Admin', contact_email: 'admin@test.com', contact_phone: '+91 98765 11111', status: 'Active', created_at: '2025-02-15T11:30:00Z', updated_at: '2025-02-15T11:30:00Z' }
+    { id: 1, company_name: 'Microsyslogic', address: '123 Tech Park, Chennai', contact_person: 'Admin Rohit', contact_email: 'admin@msl.com', contact_phone: '+91 98765 43210', status: 'Active', created_at: '2025-01-10T10:00:00Z', updated_at: '2025-01-10T10:00:00Z' },
+    { id: 2, company_name: 'Oaksun Energy', address: 'Gaddiannaram Road, Hyderabad', contact_person: 'Omkar Oak', contact_email: 'omkar@oaksun.com', contact_phone: '+91 98765 11111', status: 'Active', created_at: '2025-02-15T11:30:00Z', updated_at: '2025-02-15T11:30:00Z' }
   ],
   [TABLES.USERS]: [
-    { id: 1, company_id: 2, name: 'Test Admin', email: 'admin@test.com', password: 'password', role: 'ADMIN', is_active: true, last_login: '2026-07-06T21:10:00Z', created_at: '2025-01-10T10:05:00Z', updated_at: '2025-01-10T10:05:00Z' },
-    { id: 2, company_id: 2, name: 'Test Management', email: 'mgmt@test.com', password: 'password', role: 'MANAGEMENT', is_active: true, last_login: '2026-07-06T21:05:00Z', created_at: '2025-01-12T09:15:00Z', updated_at: '2025-01-12T09:15:00Z' },
-    { id: 4, company_id: 1, name: 'Super Admin', email: 'superadmin@msl.com', password: 'password', role: 'SUPER_ADMIN', is_active: true, last_login: '2026-07-06T20:50:00Z', created_at: '2025-01-01T09:00:00Z', updated_at: '2025-01-01T09:00:00Z' }
+    { id: 1, company_id: 1, name: 'Rohit Admin', email: 'admin@msl.com', password: 'password', role: 'ADMIN', is_active: true, last_login: '2026-07-06T21:10:00Z', created_at: '2025-01-10T10:05:00Z', updated_at: '2025-01-10T10:05:00Z' },
+    { id: 2, company_id: 1, name: 'Manager Ramesh', email: 'mgmt@msl.com', password: 'password', role: 'MANAGEMENT', is_active: true, last_login: '2026-07-06T21:05:00Z', created_at: '2025-01-12T09:15:00Z', updated_at: '2025-01-12T09:15:00Z' },
+    { id: 4, company_id: null, name: 'Super Admin', email: 'superadmin@msl.com', password: 'password', role: 'SUPER_ADMIN', is_active: true, last_login: '2026-07-06T20:50:00Z', created_at: '2025-01-01T09:00:00Z', updated_at: '2025-01-01T09:00:00Z' }
   ],
   [TABLES.PLANTS]: [],
   [TABLES.PLANT_USERS]: [],
@@ -116,7 +118,7 @@ function loadLocalStorageFallback() {
 
   const needsReinit = localTelemetry.length !== excelTelemetry.length || 
                       localPlants.length !== excelPlants.length ||
-                      !localStorage.getItem(DB_KEY_PREFIX + 'initialized_excel_v3'); // Increment version to force re-init
+                      !localStorage.getItem(DB_KEY_PREFIX + 'initialized_excel_v1');
 
   if (needsReinit) {
     localStorage.clear();
@@ -127,26 +129,8 @@ function loadLocalStorageFallback() {
       }
     });
 
-    // Make all seeded plants belong to company ID 2 ('test') and distribute statuses matching the dashboard breakdown
-    const mappedPlants = excelPlants.map((p, index) => {
-      let status = 'Normal';
-      if (index % 4 === 1) status = 'Offline';
-      else if (index % 4 === 2) status = 'Under Maintenance';
-      else if (index % 4 === 3) status = 'Decommissioned';
-      return { ...p, company_id: 2, status };
-    });
-    writeTable(TABLES.PLANTS, mappedPlants);
-
-    // Adjust telemetry timestamps from 2026-07-16/17 to 2026-07-26/27 (+10 days)
-    const adjustedTelemetry = excelTelemetry.map(t => {
-      const origDate = new Date(t.timestamp);
-      const newDate = new Date(origDate.getTime() + 10 * 24 * 60 * 60 * 1000);
-      return {
-        ...t,
-        timestamp: newDate.toISOString().replace('T', ' ').substring(0, 19)
-      };
-    });
-    writeTable(TABLES.TELEMETRY, adjustedTelemetry);
+    writeTable(TABLES.PLANTS, excelPlants);
+    writeTable(TABLES.TELEMETRY, excelTelemetry);
 
     const plantUsers = [];
     excelPlants.forEach(p => {
@@ -157,11 +141,11 @@ function loadLocalStorageFallback() {
 
     const websiteAccounts = [];
     excelPlants.forEach(p => {
-      let providerId = 2; // Solis default for id >= 5
-      if (p.id === 1 || p.id === 2) {
-        providerId = 3; // Solax (interchanged)
+      let providerId = 1;
+      if (p.id >= 5) {
+        providerId = 2;
       } else if (p.id === 3 || p.id === 4) {
-        providerId = 1; // Polycab (interchanged)
+        providerId = 3;
       }
       
       websiteAccounts.push({
@@ -179,7 +163,7 @@ function loadLocalStorageFallback() {
     });
     writeTable(TABLES.WEBSITE_ACCOUNTS, websiteAccounts);
 
-    localStorage.setItem(DB_KEY_PREFIX + 'initialized_excel_v3', 'true');
+    localStorage.setItem(DB_KEY_PREFIX + 'initialized_excel_v1', 'true');
   }
 
   // Load from local storage into cache
@@ -188,32 +172,19 @@ function loadLocalStorageFallback() {
   });
   
   if (cache[TABLES.PLANTS].length === 0) {
-    cache[TABLES.PLANTS] = excelPlants.map((p, index) => {
-      let status = 'Normal';
-      if (index % 4 === 1) status = 'Offline';
-      else if (index % 4 === 2) status = 'Under Maintenance';
-      else if (index % 4 === 3) status = 'Decommissioned';
-      return { ...p, company_id: 2, status };
-    });
+    cache[TABLES.PLANTS] = excelPlants;
   }
   if (cache[TABLES.TELEMETRY].length === 0) {
-    const adjustedTelemetry = excelTelemetry.map(t => {
-      const origDate = new Date(t.timestamp);
-      const newDate = new Date(origDate.getTime() + 10 * 24 * 60 * 60 * 1000);
-      return {
-        ...t,
-        timestamp: newDate.toISOString().replace('T', ' ').substring(0, 19)
-      };
-    });
-    cache[TABLES.TELEMETRY] = adjustedTelemetry;
+    cache[TABLES.TELEMETRY] = excelTelemetry;
   }
 }
 
-// Initialize Database in Offline/Demo Mode Unconditionally
+// Initialize Database in MVP Standalone Mode (using temporary mock data)
 export async function initializeDB() {
-  console.log('Starting in offline/demo mode (Unconditional).');
+  console.log('[MVP Mode] Initializing database with local temporary/mock telemetry data.');
   loadLocalStorageFallback();
-  return false;
+  isUsingBackend = false;
+  return true;
 }
 
 export const db = {
@@ -238,7 +209,7 @@ export const db = {
     list.push(newItem);
 
     if (isUsingBackend) {
-      fetchWithAuth('http://localhost:5000/api/db/insert', {
+      fetchWithAuth(`${API_BASE_URL}/db/insert`, {
         method: 'POST',
         body: JSON.stringify({ table: tableName, item: newItem })
       }).catch(err => console.error(`Failed to sync insert for ${tableName}:`, err));
@@ -259,7 +230,7 @@ export const db = {
       };
       
       if (isUsingBackend) {
-        fetchWithAuth('http://localhost:5000/api/db/update', {
+        fetchWithAuth(`${API_BASE_URL}/db/update`, {
           method: 'POST',
           body: JSON.stringify({ table: tableName, id, updates })
         }).catch(err => console.error(`Failed to sync update for ${tableName}:`, err));
@@ -275,7 +246,7 @@ export const db = {
     cache[tableName] = (cache[tableName] || []).filter(item => item.id !== Number(id) && item.id !== id);
     
     if (isUsingBackend) {
-      fetchWithAuth('http://localhost:5000/api/db/delete', {
+      fetchWithAuth(`${API_BASE_URL}/db/delete`, {
         method: 'POST',
         body: JSON.stringify({ table: tableName, id })
       }).catch(err => console.error(`Failed to sync delete for ${tableName}:`, err));
@@ -305,7 +276,7 @@ export const db = {
       cache[TABLES.PLANT_USERS] = mappings;
 
       if (isUsingBackend) {
-        fetchWithAuth('http://localhost:5000/api/db/assign-plant', {
+        fetchWithAuth(`${API_BASE_URL}/db/assign-plant`, {
           method: 'POST',
           body: JSON.stringify({ user_id: Number(userId), plant_id: Number(plantId) })
         }).catch(err => console.error('Failed to sync assign-plant:', err));
@@ -321,7 +292,7 @@ export const db = {
     cache[TABLES.PLANT_USERS] = filtered;
 
     if (isUsingBackend) {
-      fetchWithAuth('http://localhost:5000/api/db/remove-plant', {
+      fetchWithAuth(`${API_BASE_URL}/db/remove-plant`, {
         method: 'POST',
         body: JSON.stringify({ user_id: Number(userId), plant_id: Number(plantId) })
       }).catch(err => console.error('Failed to sync remove-plant:', err));
@@ -348,32 +319,41 @@ export const db = {
     });
   },
 
-  // Secure Authentication API Operations (Offline/Demo Mode)
-  login: async (companyName, email, password, role) => {
+  // Authentication Operations (MVP Mode with Local Temporary Data)
+  login: async (email, password, role) => {
     loadLocalStorageFallback();
-    const users = cache[TABLES.USERS];
-    const matched = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === role);
+    const users = cache[TABLES.USERS] || [];
+    const matched = users.find(u => 
+      u.email.toLowerCase() === email.toLowerCase() && 
+      (password ? u.password === password : true) && 
+      (role && role !== 'Select category' ? u.role === role : true)
+    );
+
     if (matched) {
-      const companyObj = db.getById(TABLES.COMPANIES, matched.company_id);
-      if (companyObj && companyObj.company_name.toLowerCase() === companyName.toLowerCase()) {
-        isUsingBackend = false;
-        return { success: true, token: 'mock-local-token', user: matched };
-      } else {
-        return { success: false, error: `Company mismatch. User belongs to '${companyObj ? companyObj.company_name : 'no company'}'.` };
-      }
+      authToken = 'mock-local-token';
+      isUsingBackend = false;
+      return { success: true, token: 'mock-local-token', user: matched };
     }
-    return { success: false, error: 'Invalid credentials.' };
+    return { success: false, error: 'Invalid credentials. For demo, try password "password".' };
   },
 
   bypassLogin: async (email, role) => {
     loadLocalStorageFallback();
+    const users = cache[TABLES.USERS] || [];
     let matched = null;
     if (email) {
-      matched = cache[TABLES.USERS].find(u => u.email.toLowerCase() === email.toLowerCase());
+      matched = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     } else if (role) {
-      matched = cache[TABLES.USERS].find(u => u.role === role);
+      matched = users.find(u => u.role === role);
     }
+    
+    // Default fallback to Super Admin if not matched
+    if (!matched && users.length > 0) {
+      matched = users[0];
+    }
+
     if (matched) {
+      authToken = 'mock-local-token';
       isUsingBackend = false;
       return { success: true, token: 'mock-local-token', user: matched };
     }
@@ -389,7 +369,7 @@ export const db = {
   getVariables: async (companyId, plantId) => {
     if (isUsingBackend) {
       try {
-        let url = 'http://localhost:5000/api/variables';
+        let url = `${API_BASE_URL}/variables`;
         const params = new URLSearchParams();
         if (companyId) params.append('company_id', companyId);
         if (plantId) params.append('plant_id', plantId);
@@ -412,7 +392,7 @@ export const db = {
   saveVariable: async (variable) => {
     if (isUsingBackend) {
       try {
-        const response = await fetchWithAuth('http://localhost:5000/api/variables', {
+        const response = await fetchWithAuth(`${API_BASE_URL}/variables`, {
           method: 'POST',
           body: JSON.stringify(variable)
         });
@@ -441,7 +421,7 @@ export const db = {
   onboardScraperAccount: async (providerId, username, password, scrapeIntervalMinutes) => {
     if (isUsingBackend) {
       try {
-        const response = await fetchWithAuth('http://localhost:5000/api/scrape/onboard', {
+        const response = await fetchWithAuth(`${API_BASE_URL}/scrape/onboard`, {
           method: 'POST',
           body: JSON.stringify({ providerId, username, password, scrapeIntervalMinutes })
         });
@@ -449,7 +429,7 @@ export const db = {
         
         // Fetch fresh database snapshot to reload new plants in the client cache
         if (result.success) {
-          const freshDbResponse = await fetchWithAuth('http://localhost:5000/api/db');
+          const freshDbResponse = await fetchWithAuth(`${API_BASE_URL}/db`);
           const freshDbResult = await freshDbResponse.json();
           if (freshDbResult.success && freshDbResult.data) {
             cache = freshDbResult.data;
@@ -469,7 +449,7 @@ export const db = {
       });
 
       newPlants.forEach(np => {
-        cache[TABLES.PLANTS].push({ ...np, company_id: 2 });
+        cache[TABLES.PLANTS].push(np);
       });
       writeTable(TABLES.PLANTS, cache[TABLES.PLANTS]);
 
@@ -477,10 +457,12 @@ export const db = {
     }
   },
 
+  isUsingBackend: () => isUsingBackend,
+
   triggerScrape: async (plantId) => {
     if (isUsingBackend) {
       try {
-        const response = await fetchWithAuth(`http://localhost:5000/api/scrape/${plantId}`, {
+        const response = await fetchWithAuth(`${API_BASE_URL}/scrape/${plantId}`, {
           method: 'POST'
         });
         const result = await response.json();
@@ -493,7 +475,75 @@ export const db = {
         return { success: false, error: 'Scraper server is offline.' };
       }
     }
-    return { success: true, message: 'Local storage mock mode. Telemetry updated.' };
+    
+    // Local storage mock mode: resolve active ScrapeFailure issues for this plant
+    const issuesList = cache[TABLES.PLANT_ISSUES] || [];
+    let resolvedAny = false;
+    const updatedIssues = issuesList.map(issue => {
+      if (issue.plant_id === Number(plantId) && issue.issue_type === 'ScrapeFailure' && issue.status === 'Active') {
+        resolvedAny = true;
+        return {
+          ...issue,
+          status: 'Resolved',
+          resolved_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      }
+      return issue;
+    });
+
+    if (resolvedAny) {
+      cache[TABLES.PLANT_ISSUES] = updatedIssues;
+      writeTable(TABLES.PLANT_ISSUES, updatedIssues);
+
+      // Restore plant status to Normal/Online
+      const plantList = cache[TABLES.PLANTS] || [];
+      const updatedPlants = plantList.map(p => {
+        if (p.id === Number(plantId)) {
+          return { ...p, status: 'Normal' };
+        }
+        return p;
+      });
+      cache[TABLES.PLANTS] = updatedPlants;
+      writeTable(TABLES.PLANTS, updatedPlants);
+    }
+
+    return { success: true, message: 'Local storage mock mode. Scraper resolved and telemetry updated.' };
+  },
+
+  simulateScrapeFailure: (plantId) => {
+    const list = cache[TABLES.PLANT_ISSUES] || [];
+    const existing = list.find(i => i.plant_id === Number(plantId) && i.issue_type === 'ScrapeFailure' && i.status === 'Active');
+    if (existing) return false;
+
+    const newId = list.length > 0 ? Math.max(...list.map(i => i.id || 0)) + 1 : 1;
+    const newIssue = {
+      id: newId,
+      plant_id: Number(plantId),
+      telemetry_id: null,
+      issue_type: 'ScrapeFailure',
+      severity: 'Critical',
+      message: 'Scraping failed consistently after maximum retries. Error: DNS resolution timeout on soliscloud.com portal.',
+      status: 'Active',
+      started_at: new Date().toISOString(),
+      resolved_at: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    list.push(newIssue);
+    writeTable(TABLES.PLANT_ISSUES, list);
+
+    const plantList = cache[TABLES.PLANTS] || [];
+    const updatedPlants = plantList.map(p => {
+      if (p.id === Number(plantId)) {
+        return { ...p, status: 'Bad' };
+      }
+      return p;
+    });
+    cache[TABLES.PLANTS] = updatedPlants;
+    writeTable(TABLES.PLANTS, updatedPlants);
+
+    return true;
   },
 
   TABLES

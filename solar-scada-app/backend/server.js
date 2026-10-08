@@ -1,15 +1,39 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import apiRouter from './src/routes/api.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for frontend requests
-app.use(cors());
+// Restrict CORS origin in production
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : '*';
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
+// In production, verify JWT secret is not the default development one
+if (process.env.NODE_ENV === 'production') {
+  const defaultSecret = 'super-secure-scada-jwt-secret-key-123!';
+  const currentSecret = process.env.JWT_SECRET;
+  if (!currentSecret || currentSecret === defaultSecret) {
+    console.warn('\x1b[31m%s\x1b[0m', '=====================================================');
+    console.warn('\x1b[31m%s\x1b[0m', 'SECURITY WARNING: Using default or empty JWT_SECRET in production!');
+    console.warn('\x1b[31m%s\x1b[0m', 'Please set a secure JWT_SECRET environment variable.');
+    console.warn('\x1b[31m%s\x1b[0m', '=====================================================');
+  }
+}
 
 // Parse JSON and form-url-encoded bodies
 app.use(express.json({ limit: '10mb' }));
@@ -23,60 +47,33 @@ app.get('/api/health', (req, res) => {
 // Main API Router
 app.use('/api', apiRouter);
 
-// Background Cron Scheduler (Runs every minute to check active plants and trigger due scrapers)
+// Background Scraper Workers & Scheduler Initialization
+import { initWorkers } from './src/services/worker.js';
+import { tick } from './src/services/scheduler.js';
 import cron from 'node-cron';
-import prisma from './src/config/prisma.js';
-import { runScraper, syncTelemetryFromJson } from './src/services/scraperRunner.js';
-import { runAnomalyDetection } from './src/services/anomalyDetector.js';
 
+// Initialize the queue workers on startup
+initWorkers();
+
+// Background Cron Scheduler (Ticks every minute to queue due scrapers using jitter offsets)
 cron.schedule('* * * * *', async () => {
-  console.log('--- [Cron] Polling active website accounts for scheduling... ---');
-  try {
-    const activeAccounts = await prisma.website_accounts.findMany({
-      where: { enabled: true },
-      include: { website_providers: true }
-    });
-    
-    const now = new Date();
-    
-    for (const account of activeAccounts) {
-      try {
-        let isDue = false;
-        if (!account.last_scraped_at) {
-          isDue = true;
-        } else {
-          const elapsedMinutes = (now - new Date(account.last_scraped_at)) / 1000 / 60;
-          isDue = elapsedMinutes >= (account.scrape_interval_minutes || 5);
-        }
-
-        if (isDue) {
-          const providerName = account.website_providers?.provider_name || 'Polycab';
-          console.log(`[Cron] Scraping due for Plant ID ${account.plant_id} (${providerName}). Interval: ${account.scrape_interval_minutes}m.`);
-          
-          // 1. Run Puppeteer scraper and irradiance post-processor
-          await runScraper(providerName, account.username, account.password);
-          
-          // 2. Sync all newly scraped telemetry records (opportunistic)
-          await syncTelemetryFromJson(account.plant_id);
-
-          // 3. Update last_scraped_at to prevent immediate repeat scraping
-          await prisma.website_accounts.update({
-            where: { id: account.id },
-            data: { last_scraped_at: now }
-          });
-
-          console.log(`[Cron] Successfully completed scraping and updated last_scraped_at for Plant ID ${account.plant_id}.`);
-        }
-      } catch (err) {
-        console.error(`[Cron] Failed during schedule check/scrape for plant ${account.plant_id}:`, err.message);
-      }
-    }
-    // 4. Run global anomaly checks
-    await runAnomalyDetection();
-  } catch (err) {
-    console.error('[Cron] Failed to process scheduled scraper check:', err.message);
-  }
+  console.log('--- [Cron] Running scheduler tick... ---');
+  await tick();
 });
+
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  const distPath = path.resolve(__dirname, '../dist');
+  app.use(express.static(distPath));
+
+  // Frontend client routing fallback (ignore API routes)
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.resolve(distPath, 'index.html'));
+  });
+}
 
 // Start server
 app.listen(PORT, () => {

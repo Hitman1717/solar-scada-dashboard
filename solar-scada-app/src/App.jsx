@@ -112,7 +112,7 @@ export default function App() {
         <div className="flex flex-col items-center space-y-4">
           <div className="relative flex items-center justify-center w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
           <h2 className="text-xl font-bold tracking-wider font-mono">MSLOGIC SCADA</h2>
-          <p className="text-sm text-slate-400 animate-pulse">Connecting to PostgreSQL database...</p>
+          <p className="text-sm text-slate-400 animate-pulse">Initializing SCADA Dashboard (MVP Mode)...</p>
         </div>
       </div>
     );

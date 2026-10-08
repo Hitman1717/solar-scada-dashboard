@@ -34,8 +34,8 @@ export default function RoleSelector({ onLoginSuccess }) {
       return;
     }
 
-    // Role selection bypass - if a role is selected from the dropdown, bypass credentials and log in directly
-    if (role && role !== 'Select category') {
+    // Role selection bypass - if a role is selected from the dropdown, bypass credentials and log in directly (only if credentials are empty)
+    if (role && role !== 'Select category' && !email && !password) {
       const result = await db.bypassLogin(null, role);
       if (result.success) {
         onLoginSuccess({
@@ -68,7 +68,7 @@ export default function RoleSelector({ onLoginSuccess }) {
     }
 
     // Attempt secure server authentication
-    const result = await db.login(company, email, password, role);
+    const result = await db.login(email, password, role);
     if (result.success) {
       onLoginSuccess({
         ...result.user,
@@ -90,25 +90,76 @@ export default function RoleSelector({ onLoginSuccess }) {
         {/* Welcome Mode */}
         {!isFormMode ? (
           <div className="flex flex-col items-center text-center space-y-6">
-            {/* MSLogic SCADA Brand Logo */}
-            <div className="flex items-center justify-center w-16 h-16 rounded-lg bg-[#1e3a8a] text-white shadow-inner">
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
+            {/* MicroSysLogic Brand Logo */}
+            <div className="flex items-center justify-center py-1">
+              <img 
+                src="/logo.png" 
+                alt="MicroSysLogic" 
+                className="h-14 w-auto object-contain drop-shadow-sm" 
+              />
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1">
               <h1 className="text-2xl font-bold text-[#1e3a8a] tracking-tight">Solar Plant Manager</h1>
               <p className="text-slate-500 text-sm">Industrial Telemetry Monitoring Platform</p>
             </div>
 
             <button
               onClick={() => setIsFormMode(true)}
-              className="w-full py-3.5 px-6 rounded-full border-2 border-[#d4af37] text-[#b8860b] font-semibold bg-white hover:bg-[#fffbeb] active:bg-[#fff7ed] shadow-sm flex items-center justify-center space-x-2.5 transition-all duration-200"
+              className="w-full py-3 px-6 rounded-full border-2 border-[#d4af37] text-[#b8860b] font-semibold bg-white hover:bg-[#fffbeb] active:bg-[#fff7ed] shadow-sm flex items-center justify-center space-x-2.5 transition-all duration-200 cursor-pointer text-sm"
             >
-              <Shield className="w-5 h-5" />
+              <Shield className="w-4 h-4" />
               <span>Enter credentials</span>
             </button>
+
+            {/* Quick Demo Access */}
+            <div className="w-full pt-4 border-t border-slate-100 space-y-2.5">
+              <div className="flex items-center justify-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <p className="text-xs font-bold text-slate-600 tracking-wider uppercase">⚡ Quick Demo Access</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 pt-1">
+                <button
+                  onClick={async () => {
+                    const res = await db.bypassLogin(null, 'SUPER_ADMIN');
+                    if (res.success) onLoginSuccess({ ...res.user, token: res.token });
+                  }}
+                  className="w-full py-2 px-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span>👑</span>
+                    <span>Super Admin</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Full Global SCADA</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await db.bypassLogin(null, 'ADMIN');
+                    if (res.success) onLoginSuccess({ ...res.user, token: res.token });
+                  }}
+                  className="w-full py-2 px-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span>🛠️</span>
+                    <span>Plant Admin</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Telemetry & Inverters</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await db.bypassLogin(null, 'MANAGEMENT');
+                    if (res.success) onLoginSuccess({ ...res.user, token: res.token });
+                  }}
+                  className="w-full py-2 px-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-700 flex items-center justify-between transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2">
+                    <span>📊</span>
+                    <span>Management</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">KPIs & Performance</span>
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           /* Form Input Mode */

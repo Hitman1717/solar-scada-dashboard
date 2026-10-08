@@ -466,12 +466,8 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                         <td className="p-3 font-mono text-[#1e3a8a]">{powerVal.toFixed(2)} kW</td>
                         <td className="p-3 font-mono text-[#d4af37] font-semibold">{yieldVal.toFixed(2)} kWh</td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap border ${
-                            plant.status === 'Normal' || plant.status === 'Online' || plant.status === 'Active' ? 'bg-green-50 border-green-200 text-green-700' :
-                            plant.status === 'Offline' || plant.status === 'Inactive' ? 'bg-red-50 border-red-200 text-red-700' :
-                            plant.status === 'Under Maintenance' || plant.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                            'bg-slate-100 border-slate-300 text-slate-600' // Decommissioned/Fallback gray
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${plant.status === 'Normal' || plant.status === 'Online' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
+                            }`}>
                             {plant.status}
                           </span>
                         </td>
@@ -602,12 +598,8 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                           <td className="p-3 font-mono text-[#1e3a8a]">{powerVal.toFixed(2)} kW</td>
                           <td className="p-3 font-mono text-[#d4af37] font-semibold">{yieldVal.toFixed(2)} kWh</td>
                           <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold whitespace-nowrap border ${
-                              plant.status === 'Normal' || plant.status === 'Online' || plant.status === 'Active' ? 'bg-green-50 border-green-200 text-green-700' :
-                              plant.status === 'Offline' || plant.status === 'Inactive' ? 'bg-red-50 border-red-200 text-red-700' :
-                              plant.status === 'Under Maintenance' || plant.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                              'bg-slate-100 border-slate-300 text-slate-600' // Decommissioned/Fallback gray
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${plant.status === 'Normal' || plant.status === 'Online' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'
+                              }`}>
                               {plant.status}
                             </span>
                           </td>
@@ -861,12 +853,8 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
                   <span>Back to Registry</span>
                 </button>
                 <div className="flex items-center space-x-2 text-xs">
-                  <span className={`px-2.5 py-0.5 rounded-full font-bold text-xs whitespace-nowrap border ${
-                    detailPlant?.status === 'Normal' || detailPlant?.status === 'Online' || detailPlant?.status === 'Active' ? 'bg-green-50 border-green-200 text-green-700' :
-                    detailPlant?.status === 'Offline' || detailPlant?.status === 'Inactive' ? 'bg-red-50 border-red-200 text-red-700' :
-                    detailPlant?.status === 'Under Maintenance' || detailPlant?.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                    'bg-slate-100 border-slate-300 text-slate-600' // Decommissioned/Fallback gray
-                  }`}>
+                  <span className={`px-2.5 py-0.5 rounded-full font-bold ${detailPlant?.status === 'Normal' || detailPlant?.status === 'Online' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
                     {detailPlant?.status}
                   </span>
                   <button
@@ -1038,43 +1026,100 @@ export default function AdminApp({ currentUser, currentTab, activePlant, setActi
               )}
 
               {/* D. Scraper Config */}
-              {detailActiveTab === 'scraper' && detailAccount && (
-                <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4 text-xs">
-                  <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                    <h3 className="font-bold text-sm text-slate-800">Scraping Credentials</h3>
-                    <button
-                      onClick={() => {
-                        setEditScUsername(detailAccount.username);
-                        setEditScPassword(detailAccount.password);
-                        setEditScInterval(detailAccount.scrape_interval_minutes);
-                        setIsEditingAccount(true);
-                      }}
-                      className="text-[#1e3a8a] font-bold hover:text-[#172554]"
-                    >
-                      Edit Credentials
-                    </button>
-                  </div>
+              {detailActiveTab === 'scraper' && detailAccount && (() => {
+                const activeScrapeFailure = issues.find(
+                  i => i.plant_id === Number(selectedPlantId) && 
+                       i.issue_type === 'ScrapeFailure' && 
+                       i.status === 'Active'
+                );
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2 font-medium">
-                    <p><span className="text-slate-400">Username / ID:</span> <strong className="font-mono text-slate-850">{detailAccount.username}</strong></p>
-                    <p><span className="text-slate-400">Interval:</span> <strong className="font-mono text-slate-850">Every {detailAccount.scrape_interval_minutes} minutes</strong></p>
-                    <p><span className="text-slate-400">Last Scrape Sync:</span> <strong className="font-mono text-slate-850">{new Date(detailAccount.last_scraped_at).toLocaleString()}</strong></p>
-                    <p className="flex items-center space-x-2">
-                      <span className="text-slate-400">Status:</span>
-                      <button
-                        onClick={() => handleToggleScraping(detailAccount.id)}
-                        className="focus:outline-none"
-                      >
-                        {detailAccount.enabled ? (
-                          <span className="px-2 py-0.5 rounded bg-green-50 text-green-700 font-bold border border-green-200">RUNNING</span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold border border-slate-200">PAUSED</span>
+                const handleSimulateFailure = () => {
+                  const success = db.simulateScrapeFailure(selectedPlantId);
+                  if (success) {
+                    // Update state to trigger re-render
+                    setIssues(db.getAll(db.TABLES.PLANT_ISSUES));
+                    const freshPlants = db.getAll(db.TABLES.PLANTS).filter(p => Number(p.company_id) === Number(currentUser?.company_id));
+                    setPlants(freshPlants);
+                    const updatedPlantObj = freshPlants.find(p => Number(p.id) === Number(selectedPlantId));
+                    if (updatedPlantObj && activePlant) {
+                      setActivePlant({ ...updatedPlantObj });
+                    }
+                    db.logAudit(currentUser.id, `Simulated Scrape Failure for Station ID: ${selectedPlantId}`, 'PlantIssue', null);
+                    alert('Simulated scrape failure raised successfully!');
+                  } else {
+                    alert('A scrape failure is already active for this station.');
+                  }
+                };
+
+                return (
+                  <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4 text-xs">
+                    {activeScrapeFailure && (
+                      <div className="bg-red-50 border border-red-200 rounded p-4 text-red-800 space-y-2">
+                        <div className="font-bold flex items-center space-x-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-650 animate-pulse"></span>
+                          <span className="text-sm font-bold text-red-700">Scraper Failure Active</span>
+                        </div>
+                        <p className="text-slate-650 font-normal italic">{activeScrapeFailure.message}</p>
+                        <div className="flex space-x-3 pt-2">
+                          <button
+                            onClick={() => triggerRefreshData(selectedPlantId)}
+                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white font-bold rounded flex items-center space-x-1 cursor-pointer"
+                          >
+                            <span>Resolve & Retry Scraper</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                      <h3 className="font-bold text-sm text-slate-800">Scraping Credentials</h3>
+                      <div className="flex items-center space-x-3">
+                        {!db.isUsingBackend() && (
+                          <button
+                            onClick={handleSimulateFailure}
+                            className="text-amber-600 font-bold hover:text-amber-850 cursor-pointer"
+                          >
+                            Simulate Scrape Failure
+                          </button>
                         )}
-                      </button>
-                    </p>
+                        <button
+                          onClick={() => {
+                            setEditScUsername(detailAccount.username);
+                            setEditScPassword(detailAccount.password);
+                            setEditScInterval(detailAccount.scrape_interval_minutes);
+                            setIsEditingAccount(true);
+                          }}
+                          className="text-[#1e3a8a] font-bold hover:text-[#172554] cursor-pointer"
+                        >
+                          Edit Credentials
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2 font-medium">
+                      <p><span className="text-slate-400">Username / ID:</span> <strong className="font-mono text-slate-850">{detailAccount.username}</strong></p>
+                      <p><span className="text-slate-400">Interval:</span> <strong className="font-mono text-slate-850">Every {detailAccount.scrape_interval_minutes} minutes</strong></p>
+                      <p><span className="text-slate-400">Last Scrape Sync:</span> <strong className="font-mono text-slate-850">{new Date(detailAccount.last_scraped_at).toLocaleString()}</strong></p>
+                      <p className="flex items-center space-x-2">
+                        <span className="text-slate-400">Status:</span>
+                        <button
+                          onClick={() => handleToggleScraping(detailAccount.id)}
+                          className="focus:outline-none cursor-pointer"
+                          disabled={!!activeScrapeFailure}
+                        >
+                          {activeScrapeFailure ? (
+                            <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 font-bold border border-red-300 animate-pulse">SCRAPE FAILED</span>
+                          ) : detailAccount.enabled ? (
+                            <span className="px-2 py-0.5 rounded bg-green-50 text-green-700 font-bold border border-green-200">RUNNING</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold border border-slate-200">PAUSED</span>
+                          )}
+                        </button>
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* E. Hardware Strings */}
               {detailActiveTab === 'hardware' && (

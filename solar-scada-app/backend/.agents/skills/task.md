@@ -1,0 +1,27 @@
+# Task List: OEM Scraper Architecture (Redis-Free)
+
+- [x] Component 1: Database Migration
+  - [x] Add `oem_key` to `schema.prisma`
+  - [x] Add `oem_key` to `schema.sql`
+  - [x] Add `oem_key` to `seed.js`
+  - [x] Create and run `add_oem_key.js` migration script
+- [x] Component 2: Install Playwright & configure package.json
+  - [x] Update `package.json` dependencies
+  - [x] Install Playwright
+- [x] Component 3: Scraper strategies (Playwright)
+  - [x] Implement `browserPool.js`
+  - [x] Implement `sessions.js`
+  - [x] Implement `scrapers/polycab.js`
+  - [x] Implement `scrapers/solis.js`
+  - [x] Implement `scrapers/solax.js`
+- [x] Component 4: Queue dispatcher, Worker, and Scheduler
+  - [x] Implement `queues.js` (concurrency & rate limit manager)
+  - [x] Implement `worker.js` (saves result, checks condition, logs failures)
+  - [x] Implement `scheduler.js` (ticks every minute, runs jitter)
+  - [x] Integrate scheduler into `server.js`
+- [x] Component 5: Access Control Middleware & Controller logic
+  - [x] Apply access control filter to `dbController.js`
+  - [x] Apply access control filter to `varController.js`
+  - [x] Update `scrapeController.js` to queue manual triggers and onboarding jobs
+- [x] Component 6: Cleanup redundant files
+  - [x] Remove old standalone sequential files or folders if unnecessary

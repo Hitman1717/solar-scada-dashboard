@@ -45,10 +45,10 @@ async function runSeed() {
 
     // 5. Seed Website Providers
     await pool.query(`
-      INSERT INTO website_providers (id, provider_name, login_url, description) VALUES
-      (1, 'Polycab', 'https://polycab.com', 'Polycab monitoring API'),
-      (2, 'Solis', 'https://solisinverters.com', 'Solis Cloud API portal'),
-      (3, 'Solax', 'https://solaxcloud.com', 'Solax portal scraper')
+      INSERT INTO website_providers (id, provider_name, oem_key, login_url, description) VALUES
+      (1, 'Polycab', 'polycab', 'https://polycab.com', 'Polycab monitoring API'),
+      (2, 'Solis', 'solis', 'https://solisinverters.com', 'Solis Cloud API portal'),
+      (3, 'Solax', 'solax', 'https://solaxcloud.com', 'Solax portal scraper')
       ON CONFLICT (id) DO NOTHING
     `);
     console.log('Seeded website providers.');

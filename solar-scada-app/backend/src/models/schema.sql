@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS plant_users (
 CREATE TABLE IF NOT EXISTS website_providers (
     id SERIAL PRIMARY KEY,
     provider_name VARCHAR(255) UNIQUE NOT NULL,
+    oem_key VARCHAR(100) UNIQUE,
     login_url VARCHAR(255),
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
